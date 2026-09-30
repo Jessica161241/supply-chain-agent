@@ -1,0 +1,40 @@
+# ============================================
+# 多级库存网络拓扑配置
+# 层级：区域仓(1) -> 城市仓(2) -> 终端门店(6)
+# ============================================
+
+network:
+  name: "Regional_Distribution_Network"
+  regional_warehouse:
+    name: "Regional_Warehouse_1"
+    lead_time_to_city: 3        # 区域仓到城市仓的提前期（天）
+    city_warehouses:
+      - name: "City_Warehouse_1"
+        lead_time_to_store: 1   # 城市仓到门店的提前期（天）
+        stores:
+          - "Store_1"
+          - "Store_2"
+          - "Store_3"
+      - name: "City_Warehouse_2"
+        lead_time_to_store: 1
+        stores:
+          - "Store_4"
+          - "Store_5"
+          - "Store_6"
+
+# SKU 数量
+sku_count: 5
+
+# 仿真天数
+simulation_days: 365
+
+# 需求参数（用于早期合成数据调试）
+demand:
+  mean: 10                      # 平均日需求
+  std: 3                        # 需求标准差
+  distribution: "normal"        # 需求分布类型
+
+# 成本参数（后续 benchmark 对比用）
+cost:
+  holding_cost: 0.15            # 单位持有成本
+  backorder_cost: 0.60          # 单位缺货成本
