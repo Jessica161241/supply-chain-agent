@@ -1,40 +1,65 @@
 # ============================================
 # 多级库存网络拓扑配置
-# 层级：区域仓(1) -> 城市仓(2) -> 终端门店(6)
+# 层级：区域仓(1) -> 城市仓(2) -> 终端门店(4)
+# 参数依据：docs/AB_interface_checklist.md §2.1-2.2
 # ============================================
 
 network:
   name: "Regional_Distribution_Network"
+
+  # ---- 区域仓（1个）----
   regional_warehouse:
-    name: "Regional_Warehouse_1"
-    lead_time_to_city: 3        # 区域仓到城市仓的提前期（天）
-    city_warehouses:
-      - name: "City_Warehouse_1"
-        lead_time_to_store: 1   # 城市仓到门店的提前期（天）
-        stores:
-          - "Store_1"
-          - "Store_2"
-          - "Store_3"
-      - name: "City_Warehouse_2"
-        lead_time_to_store: 1
-        stores:
-          - "Store_4"
-          - "Store_5"
-          - "Store_6"
+    name: "regional_warehouse"
+    lead_time: 4                # 补货提前期（节点级，见对齐清单 §1.7）
+    holding_cost: 0.08
+    backorder_cost: 0.40
+    service_level: 0.95
+    initial_inventory: 50
+    depreciation_rate: 0.0
 
-# SKU 数量
-sku_count: 5
+  # ---- 城市仓（2个）----
+  city_warehouses:
+    - name: "city_warehouse_1"
+      lead_time: 2
+      holding_cost: 0.15
+      backorder_cost: 0.50
+      service_level: 0.95
+      initial_inventory: 50
+      depreciation_rate: 0.0
+      stores: ["store_1", "store_2"]
 
-# 仿真天数
+    - name: "city_warehouse_2"
+      lead_time: 2
+      holding_cost: 0.15
+      backorder_cost: 0.50
+      service_level: 0.95
+      initial_inventory: 50
+      depreciation_rate: 0.0
+      stores: ["store_3", "store_4"]
+
+  # ---- 终端门店（4个，每城市仓带2个）----
+  store_defaults:
+    lead_time: 1
+    holding_cost: 0.20
+    backorder_cost: 0.60
+    service_level: 0.95
+    initial_inventory: 50
+    depreciation_rate: 0.0
+
+# SKU 数量（对齐 A 同学 data_loader 的 sku_count=5，但拓扑只有 4 个终端，
+# 实际仿真按 4 条 dept 序列映射到 store_1..4）
+sku_count: 4
+
+# 仿真天数（对齐 A 同学 data_loader 的 M5_MAX_PERIODS=365）
 simulation_days: 365
 
-# 需求参数（用于早期合成数据调试）
+# 需求参数（合成数据调试用，A 同学 data_loader 已内置，此处仅记录）
 demand:
-  mean: 10                      # 平均日需求
-  std: 3                        # 需求标准差
-  distribution: "normal"        # 需求分布类型
+  mean: 10
+  std: 3
+  distribution: "normal"
 
-# 成本参数（后续 benchmark 对比用）
+# 成本参数（全局默认，节点级可覆盖）
 cost:
-  holding_cost: 0.15            # 单位持有成本
-  backorder_cost: 0.60          # 单位缺货成本
+  holding_cost: 0.15
+  backorder_cost: 0.60
