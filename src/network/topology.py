@@ -38,7 +38,11 @@ from deepbullwhip import (
     SupplyChainGraph,
 )
 
-__all__ = ["build_network_from_config", "run_baseline_policy"]
+__all__ = [
+    "build_network_from_config",
+    "build_coordinated_network_from_config",
+    "run_baseline_policy",
+]
 
 
 def build_network_from_config(config_path: str | Path) -> NetworkSupplyChain:
@@ -152,3 +156,81 @@ def run_baseline_policy(network: NetworkSupplyChain,
         含 node_results / edge_flows / cumulative_bullwhip / total_cost。
     """
     return network.simulate(demand, forecasts_mean, forecasts_std)
+
+def build_coordinated_network_from_config(
+    config_path: str | Path, alpha: float = 0.3
+) -> tuple[NetworkSupplyChain, SignalBus]:
+    """构建带协同策略的网络（OrderUpTo 基线 + 下游聚合缺口信号）。
+
+    Parameters
+    ----------
+    config_path : str or Path
+        ``config/network_config.yaml`` 的路径。
+    alpha : float, default 0.3
+        协同强度系数；``alpha=0`` 时等价于纯 OrderUpTo。
+
+    Returns
+    -------
+    NetworkSupplyChain
+        每个节点的策略均为 :class:`CoordinatedOrderingPolicy`，
+        共享同一个 :class:`SignalBus`。
+    """
+    from src.coordination.custom_policy import CoordinatedOrderingPolicy
+    from src.coordination.signal_protocol import SignalBus
+
+    # 复用 build_network_from_config 的图构造逻辑
+    config_path = Path(config_path)
+    with open(config_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    net_cfg = cfg["network"]
+
+    # --- 与 build_network_from_config 相同的节点/边构造（此处直接内联，避免抽象泄漏）---
+    nodes: dict[str, EchelonConfig] = {}
+    rw = net_cfg["regional_warehouse"]
+    nodes[rw["name"]] = EchelonConfig(
+        name=rw["name"], lead_time=rw["lead_time"],
+        holding_cost=rw["holding_cost"], backorder_cost=rw["backorder_cost"],
+        depreciation_rate=rw["depreciation_rate"],
+        service_level=rw["service_level"],
+        initial_inventory=rw["initial_inventory"],
+    )
+    store_defaults = net_cfg["store_defaults"]
+    for cw in net_cfg["city_warehouses"]:
+        nodes[cw["name"]] = EchelonConfig(
+            name=cw["name"], lead_time=cw["lead_time"],
+            holding_cost=cw["holding_cost"], backorder_cost=cw["backorder_cost"],
+            depreciation_rate=cw["depreciation_rate"],
+            service_level=cw["service_level"],
+            initial_inventory=cw["initial_inventory"],
+        )
+        for store_name in cw["stores"]:
+            nodes[store_name] = EchelonConfig(
+                name=store_name, lead_time=store_defaults["lead_time"],
+                holding_cost=store_defaults["holding_cost"],
+                backorder_cost=store_defaults["backorder_cost"],
+                depreciation_rate=store_defaults["depreciation_rate"],
+                service_level=store_defaults["service_level"],
+                initial_inventory=store_defaults["initial_inventory"],
+            )
+    edges: dict[tuple[str, str], EdgeConfig] = {}
+    for cw in net_cfg["city_warehouses"]:
+        edges[(rw["name"], cw["name"])] = EdgeConfig()
+        for store_name in cw["stores"]:
+            edges[(cw["name"], store_name)] = EdgeConfig()
+    graph = SupplyChainGraph(nodes=nodes, edges=edges)
+
+    # --- 共享总线 + 每个节点一个协同策略 ---
+    bus = SignalBus()
+    policies: dict[str, CoordinatedOrderingPolicy] = {}
+    for name in nodes:
+        downstream = graph.downstream_neighbors(name)
+        policies[name] = CoordinatedOrderingPolicy(
+            lead_time=nodes[name].lead_time,
+            service_level=nodes[name].service_level,
+            signal_bus=bus,
+            node_name=name,
+            downstream_names=downstream,
+            alpha=alpha,
+        )
+
+    return NetworkSupplyChain(graph=graph, policies=policies), bus
