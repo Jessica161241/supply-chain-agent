@@ -28,6 +28,7 @@ run_baseline_policy(network, demand, forecasts_mean, forecasts_std) -> Simulatio
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 from deepbullwhip import (
@@ -37,6 +38,10 @@ from deepbullwhip import (
     OrderUpToPolicy,
     SupplyChainGraph,
 )
+
+if TYPE_CHECKING:
+    # 仅用于类型检查，运行时由函数内部的 import 提供（避免模块级循环依赖）
+    from src.coordination.signal_protocol import SignalBus
 
 __all__ = [
     "build_network_from_config",
