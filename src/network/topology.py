@@ -171,9 +171,11 @@ def build_coordinated_network_from_config(
 
     Returns
     -------
-    NetworkSupplyChain
-        每个节点的策略均为 :class:`CoordinatedOrderingPolicy`，
-        共享同一个 :class:`SignalBus`。
+    tuple[NetworkSupplyChain, SignalBus]
+        ``(网络对象, 共享信号总线)``。网络里每个节点的策略均为
+        :class:`CoordinatedOrderingPolicy`，共享同一个 ``SignalBus``；
+        总线一并返回是为了让调用方能在仿真后读取信号快照
+        （网络对象本身不暴露策略字典）。
     """
     from src.coordination.custom_policy import CoordinatedOrderingPolicy
     from src.coordination.signal_protocol import SignalBus
