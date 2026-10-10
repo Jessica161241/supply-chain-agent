@@ -375,10 +375,13 @@ pivot_demand_wide(demand_long_df) -> pd.DataFrame
 # src/forecasting/custom_forecaster.py
 class WeightedMAForecaster(Forecaster):
     def forecast(self, demand_history: TimeSeries, steps_ahead: int = 1
-                 ) -> tuple[float, float]:     # ← 标量！见 1.1
+                 ) -> tuple[np.ndarray, np.ndarray]:   # ← 数组，长度 == steps_ahead（见下方说明）
         ...
 
-# 得到整段 (T,) 预测数组（供仿真用）—— 用继承来的方法，不用自己写
+    def generate_forecasts(self, demand) -> tuple[TimeSeries, TimeSeries]:  # ← 重写基类，做数组→标量适配
+        ...
+
+# 得到整段 (T,) 预测数组（供仿真用）—— 只调这个
 fm, fs = forecaster.generate_forecasts(demand)   # 两个都是 (T,)
 ```
 
@@ -388,6 +391,27 @@ fm, fs = forecaster.generate_forecasts(demand)   # 两个都是 (T,)
 - `fs` 允许为 0（历史长度不足 2 时框架就是这么返回的），**B 侧不能假设 `fs > 0`**
 - 若走**路线乙**（1.4 节），A 额外提供 `dict[str, tuple[np.ndarray, np.ndarray]]`，
   key 是节点名，覆盖到中间层 —— 具体容器格式待 A/B 再定
+
+#### ⚠️ `forecast()` 返回值口径差异（2026-10-11 实测复核，待双方签字）
+
+| | 框架抽象签名 | 本类实现 |
+|---|---|---|
+| 声明/返回 | `tuple[float, float]`（两个标量） | `tuple[np.ndarray, np.ndarray]`，各长 `steps_ahead` |
+
+本类采用**数组契约**以支持多步预测，代价是必须**重写基类 `generate_forecasts`**
+（基类实现做 `fm[t], fs[t] = self.forecast(history)`，遇到数组会抛
+"setting an array element with a sequence"）。
+
+**2026-10-11 全代码库实测复核结论：该差异对 B 侧完全不可见，安全。** 依据：
+
+1. 框架内**唯一**的预测调用点是 `benchmark/runner.py:160`
+   → `fm, fs = forecaster.generate_forecasts(demand)`；
+2. `forecast()` 仅被基类 `generate_forecasts` 内部调用（`forecast/base.py:58`），
+   而该方法在本类中已被重写；
+3. 框架自带的 `DeepARForecaster` 有**同样的重写先例**（`forecast/deepar.py:176,181`）。
+
+因此 B 侧只需按 `generate_forecasts()` 的 `(T,)` 口径消费，无需感知此差异。
+**本条仍待 B 同学签字确认**，确认后把"待确认"改为"已确认"。
 
 - 主导：**A** 确认：**B** — [ ]
 
@@ -423,6 +447,12 @@ EchelonResult:
 | `agent/agent_wrapper.py` | A+B | 共同 |
 | `tests/test_forecaster.py` | A | |
 | `tests/test_policy.py` / `test_simulation.py` | B | |
+| `docs/solution.md` / `architecture.md` / `setup_guide.md` / `acceptance_checklist.md` | A 主笔 | B 可补充自己章节 |
+| `docs/AB_interface_checklist.md` | A 主导维护 | B 确认 |
+| `docs/risk_log.md` | B | |
+| `scripts/*` | A | |
+| `README.md` / `README_A.md` | A | `README_A.md` 为 A 侧工作日志 |
+| `requirements.txt` / `.gitignore` / `.gitattributes` | A | B 只读 |
 
 ---
 
@@ -430,13 +460,14 @@ EchelonResult:
 
 | # | 事项 | 负责人 | 状态 |
 |---|---|---|---|
-| 1 | **拍板 1.4 节：中间层预测走路线甲还是路线乙** | A + B | [ ] |
-| 2 | 确认 2.4 第 22 条：M5 的 0 值是否保留 | A + B | [ ] |
-| 3 | 确认 1.6：最终提交的 Fill Rate 用自研口径还是框架口径（建议自研，需在文档说明） | B + A | [ ] |
-| 4 | 确认是否做易腐品 / 折损场景（影响 2.2 第 12 条） | A + B | [ ] |
-| 5 | 拿到真实 M5 数据（`data/raw/m5/sales_train_evaluation.csv`） | A | [ ] |
-| 6 | B 交付 `network_config.yaml` + `topology.py` 后，重跑 `quickstart_verify.py` 验证 | A | [ ] |
-| 7 | `task.md` 第 82 行的 `docs/risk_shturl` 疑为 `risk_log.md` 的笔误，确认文件名 | A + B | [ ] |
+| 1 | **拍板 1.4 节：中间层预测走路线甲还是路线乙** | A + B | [ ] 目前按路线甲跑通 |
+| 2 | 确认 2.4 第 22 条：M5 的 0 值是否保留 | A + B | [x] 保留 0、不插值（已实现） |
+| 3 | 确认 1.6：最终提交的 Fill Rate 用自研口径还是框架口径 | B + A | [x] 双口径输出，对外主口径取 `true_fill_rate_excl_top`（`1 - 缺货量/需求量` 且排除顶层区域仓） |
+| 4 | 确认是否做易腐品 / 折损场景（影响 2.2 第 12 条） | A + B | [x] 不做，`depreciation_rate=0` |
+| 5 | 拿到真实 M5 数据（`data/raw/m5/sales_train_evaluation.csv`） | A | [ ] 未拿到，当前走合成兜底；拿到后 `--require-m5` 重跑 |
+| 6 | B 交付 `network_config.yaml` + `topology.py` 后重跑 `quickstart_verify.py` 验证 | A | [x] 已重跑，8/8 通过（步骤 8 已由 SKIP 变为实跑） |
+| 7 | `task.md` 第 82 行的 `docs/risk_shturl` 疑为 `risk_log.md` 的笔误 | A + B | [x] 确认为笔误，实际文件名 `docs/risk_log.md` |
+| 8 | 签字确认 3.2 节 `forecast()` 数组返回口径差异 | B | [ ] 已实测复核安全，待 B 签字 |
 
 ---
 
@@ -448,6 +479,7 @@ EchelonResult:
 | 2026-10-01 | 本文件曾在 git 拉取中丢失，由 A 同学按原文恢复；§3.2 的 forecast 返回类型与新任务要求（返回长度=steps_ahead 的数组）存在口径差异，恢复版保留原记录，**以 custom_forecaster.py 实际实现为准（数组契约），待 A/B 确认后更新本条** | A 同学 |
 | 2026-10-04 | 按团队注意事项 §8（数据长表口径 + config 基准）更新 §3.1：data_loader 返回长表 [date, store_id, item_id, demand]，新增 pivot_demand_wide 长表→宽表工具；load_synthetic_demand 默认参数对齐 config（5 SKU×365 天、mean=10、std=3）；§2.3 的 156 周 weekly 口径与 config 365 天 daily 口径的差异仍待 A/B 拍板 | A 同学（按队长注意事项执行） |
 | 2026-10-04 | 仿真时间口径拍板（A 依队长注意事项选 config 基准，task.md/旧清单的 156 周口径作废）：§2.3 第 13/15 条与 §2.4 第 23 条改为 **365 天 daily**——M5 加载切 daily 并截取前 365 天（M5_MAX_PERIODS=365，400 天 CSV 实测截断正确）；M5 选型仍为 4 条 dept 序列，是否扩到 sku_count=5 待 B 拍板 | A 同学 |
+| 2026-10-11 | 代码冻结日复核：§3.2 补记 `forecast()` 数组返回口径差异的**全代码库调用路径实测结论**（框架只调 `generate_forecasts()`，本类已重写该方法，差异对 B 不可见；DeepAR 有同样先例），状态从"待 A/B 确认后更新"改为"待 B 签字"；§3.4 文件归属表补全 docs/scripts/README/仓库配置行；§4 遗留待办逐条结项（#2/#3/#4/#6/#7 已完成，#1/#5/#8 待办），新增第 8 条（数组契约签字） | A 同学 |
 
 > 本文所有"实测"结论对应的源码位置：
 > `deepbullwhip/forecast/base.py`、`deepbullwhip/policy/base.py`、
