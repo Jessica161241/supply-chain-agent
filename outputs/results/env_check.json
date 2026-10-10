@@ -1,0 +1,87 @@
+{
+  "steps": [
+    {
+      "step": "Python 版本",
+      "ok": true,
+      "detail": "Python 3.10.4 —— 符合赛题约束 (3.10 / 3.11)  [Windows]",
+      "python": "3.10.4",
+      "platform": "Windows"
+    },
+    {
+      "step": "依赖包版本",
+      "ok": true,
+      "detail": "numpy            2.2.6\npandas           2.3.3\nscipy            1.15.3\nmatplotlib       3.10.9\ndeepbullwhip     0.4.1",
+      "missing": []
+    },
+    {
+      "step": "关键 API 导入",
+      "ok": true,
+      "detail": "OK   deepbullwhip.EchelonConfig\nOK   deepbullwhip.EdgeConfig\nOK   deepbullwhip.SupplyChainGraph\nOK   deepbullwhip.NetworkSupplyChain\nOK   deepbullwhip.SerialSupplyChain\nOK   deepbullwhip.Forecaster\nOK   deepbullwhip.ReplayDemandGenerator\nOK   deepbullwhip.SemiconductorDemandGenerator\nOK   deepbullwhip.policy.base.OrderingPolicy\nOK   deepbullwhip.policy.order_up_to.OrderUpToPolicy\nOK   deepbullwhip.datasets.loader.load_dataset\nOK   deepbullwhip.datasets.m5.load_m5\n提示: OrderingPolicy 顶层未导出，必须用 from deepbullwhip.policy.base import OrderingPolicy",
+      "failed": []
+    },
+    {
+      "step": "数据集加载（来源: synthetic）",
+      "ok": true,
+      "detail": "M5 不可用，已降级为合成数据集：未找到 M5 数据（store=CA_1, dept=FOODS_1）。三种修复方式任选：\nOK   SYN/SKU_1: T=365 期, mean=9.94\nOK   SYN/SKU_2: T=365 期, mean=10.06\nOK   SYN/SKU_3: T=365 期, mean=10.26\nOK   SYN/SKU_4: T=365 期, mean=10.04",
+      "data_source": "synthetic"
+    },
+    {
+      "step": "ReplayDemandGenerator 转换",
+      "ok": true,
+      "detail": "输入 T=365 -> generate(T=52) 输出 T=52，mean=39.43"
+    },
+    {
+      "step": "Serial 仿真跑通",
+      "ok": true,
+      "detail": "echelon                 BW  FillRate        Cost\nDistributor           1.90      81%          86\nOSAT                  1.83      85%          82\nFoundry              16.36      73%         337\nSupplier             38.31      83%       1,166\ncumulative BW      2178.67",
+      "serial": {
+        "n_echelons": 4,
+        "cumulative_bullwhip": 2178.66927698451,
+        "total_cost": 1671.0391253633939
+      }
+    },
+    {
+      "step": "Network(DAG) 仿真跑通",
+      "ok": true,
+      "detail": "demand_nodes = ['Retail_A', 'Retail_B']\nsource_nodes = ['Factory']\nnode                    BW  FillRate        Cost\nFactory               1.89      79%         168\nWarehouse             9.55      12%         618\nRetail_A              1.99      98%          72\nRetail_B              2.14      98%          76\nedge_flows: 3 条边",
+      "network": {
+        "nodes": [
+          "Factory",
+          "Warehouse",
+          "Retail_A",
+          "Retail_B"
+        ],
+        "n_edges": 3,
+        "cumulative_bullwhip": 1.887382855549121,
+        "total_cost": 933.3739444969156
+      }
+    },
+    {
+      "step": "本项目 3 层拓扑校验",
+      "ok": true,
+      "detail": "节点 7 个 / 边 6 条\n拓扑序 ['regional_warehouse', 'city_warehouse_1', 'city_warehouse_2', 'store_1', 'store_2', 'store_3', 'store_4']\n  regional_warehouse     -> city_warehouse_1\n  city_warehouse_1       -> store_1\n  city_warehouse_1       -> store_2\n  regional_warehouse     -> city_warehouse_2\n  city_warehouse_2       -> store_3\n  city_warehouse_2       -> store_4",
+      "topology": {
+        "nodes": 7,
+        "edges": 6
+      }
+    }
+  ],
+  "n_failed": 0,
+  "data_source": "synthetic",
+  "serial": {
+    "n_echelons": 4,
+    "cumulative_bullwhip": 2178.66927698451,
+    "total_cost": 1671.0391253633939
+  },
+  "network": {
+    "nodes": [
+      "Factory",
+      "Warehouse",
+      "Retail_A",
+      "Retail_B"
+    ],
+    "n_edges": 3,
+    "cumulative_bullwhip": 1.887382855549121,
+    "total_cost": 933.3739444969156
+  }
+}
