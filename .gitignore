@@ -13,13 +13,8 @@ __pycache__/
 # 数据文件（raw 数据不进 Git）
 data/raw/
 data/processed/
-*.csv
-*.parquet
-
-# 输出文件（图表和结果可以按需提交，先忽略临时文件）
-outputs/figures/*.png
-outputs/results/*.csv
-outputs/results/*.tex
+data/**/*.csv
+data/**/*.parquet
 
 # 系统文件
 .DS_Store
