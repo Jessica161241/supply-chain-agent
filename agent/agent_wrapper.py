@@ -52,18 +52,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # 默认需求口径：
 #   M5 路径 = CA_1 × 4 个 dept（对齐清单 §1.2 选型）；
-#   合成兜底 = 5 节点 × 365 天（对齐 config/network_config.yaml：sku_count=5、
-#   simulation_days=365；demand.mean=10 / demand.std=3 由 data_loader 内置实现）
+#   合成兜底 = 4 节点 × 365 天（对齐 config/network_config.yaml：
+#   sku_count=4、simulation_days=365，正好一一映射到 store_1..store_4；
+#   demand.mean=10 / demand.std=3 由 data_loader 内置实现）
 _DEFAULT_STORE = "CA_1"
 _DEFAULT_DEPTS = ["FOODS_1", "FOODS_2", "HOUSEHOLD_1", "HOUSEHOLD_2"]
-_DEFAULT_N_NODES = 5
+_DEFAULT_N_NODES = 4
 _DEFAULT_N_DAYS = 365
 
 # 拓扑叶子门店名（与 config/network_config.yaml 一致）
 _STORE_NAMES = ["store_1", "store_2", "store_3", "store_4"]
 
-# 协同强度默认值——05_B_draft 的 alpha 扫描结论：
-#   alpha=0.8 距相变临界（1.0~1.1）保留 27% 安全边际，成本改善接近最优。
+# 协同强度默认值——实测 alpha 扫描结论：
+#   相变临界落在 alpha = 1.0 ~ 1.05 之间（1.0 时总成本 16,040；
+#   1.05 骤升至 35,558）。取 0.8 距临界保留约 20~24% 安全边际，
+#   成本改善已接近最优。
 _DEFAULT_ALPHA = 0.8
 
 
@@ -115,7 +118,8 @@ def prepare_demand(use_m5: bool = False,
         失败时打印原因并自动降级为合成数据，不阻塞流程。
     store_ids / item_ids : M5 门店与 dept 级序列 ID（仅 use_m5=True 时生效）。
     n_nodes / n_days / seed : 合成数据参数（仅降级路径生效）。
-        默认 n_nodes=5 / n_days=365 对齐 config 基准（sku_count / simulation_days）。
+        默认 n_nodes=4 / n_days=365 对齐 config 基准（sku_count / simulation_days），
+        4 条序列一一映射到 store_1..store_4。
 
     Returns
     -------
@@ -228,8 +232,8 @@ def run_network_simulation(
         None 时自动生成（默认 WeightedMAForecaster）。
         key 既支持 A 宽表列名（如 "SYN_SKU_1"），也支持拓扑节点名（如 "store_1"）。
     alpha : float, default 0.8
-        协同强度系数。默认值来自 05_B_draft 的 alpha 扫描结论：
-        0.8 距相变临界（1.0~1.1）保留 27% 安全边际，成本改善接近最优。
+        协同强度系数。默认值来自实测 alpha 扫描：
+        相变临界在 1.0~1.05 之间，取 0.8 保留约 20~24% 安全边际。
     coordinated : bool, default True
         True  → 协同网络（OrderUpTo + 下游聚合缺口信号）；
         False → 纯 OrderUpTo 基线（对照实验用）。
@@ -349,7 +353,6 @@ def _self_test() -> int:
         report("prepare_demand()（合成兜底路径）", False, traceback.format_exc())
 
     # ---------- 步骤 2：build_forecast_bundle（默认 + 可插拔基线） ----------
-        # ---------- 步骤 2：build_forecast_bundle（默认 + 可插拔基线） ----------
     try:
         # 与 05_B_draft / benchmark 保持同一预测口径（window=8 加权），
         # 避免同一方案在不同入口下数字不一致
