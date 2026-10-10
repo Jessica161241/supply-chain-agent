@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """agent/agent_wrapper.py —— 全流程 Agent 封装（A+B 共同文件）
 
-当前状态（2026-10-01）
+当前状态（2026-10-10）
 ----
 * **A 侧已完成**：需求准备（M5→合成三级降级，封装 src/data_loader.py）+
   预测产出（逐节点整段 (T,) 的 (forecast_mean, forecast_std)，封装
   src/forecasting/custom_forecaster.py，可插拔任意 Forecaster）。
-* **B 侧待交付**：src/network/topology.py（3 层 NetworkSupplyChain 构造）与
-  src/coordination/*（协同策略）——仿真执行环节以 TODO(B) 占位，
-  调用即抛 NotImplementedError，**A 侧不伪造 B 的仿真行为**。
+* **B 侧已完成**：src/network/topology.py（四层 NetworkSupplyChain 构造）+
+  src/coordination/*（协同策略）——仿真执行环节接入完成，
+  支持纯 OrderUpTo 基线与协同策略（OrderUpTo + 下游聚合缺口信号）两种模式。
 
 A↔B 接口约定（源自 docs/AB_interface_checklist.md §3.1-3.3）
 ----
@@ -16,16 +16,17 @@ A↔B 接口约定（源自 docs/AB_interface_checklist.md §3.1-3.3）
   口径）+ ``ReplayDemandGenerator``（整表聚合 / 逐节点两种构造）。
 * A → B 预测交接物：``dict[节点名, (fm, fs)]``——fm/fs 均为 shape (T,) 的
   float64 数组；**fs 允许为 0**（历史不足时的启动瞬态），B 侧不得假设 fs > 0。
-* B → A 结果（待 B 交付后对接）：``NetworkSimulationResult`` 的
-  ``node_results`` / ``edge_flows`` / ``cumulative_bullwhip`` / ``total_cost``。
+* B → A 结果：``NetworkSimulationResult`` 的 ``node_results`` / ``edge_flows``
+  / ``cumulative_bullwhip`` / ``total_cost``。
 
 对外接口
 ----
 ::
 
-    prepare_demand(use_m5=False, ...)               -> DemandBundle
-    build_forecast_bundle(demand_df, forecaster=None) -> dict[str, (fm, fs)]
-    run_network_simulation(bundle, forecast_map=None) -> NotImplementedError（TODO(B)）
+    prepare_demand(use_m5=False, ...)                  -> DemandBundle
+    build_forecast_bundle(demand_df, forecaster=None)  -> dict[str, (fm, fs)]
+    run_network_simulation(bundle, forecast_map=None,
+                           alpha=0.8, coordinated=True) -> NetworkSimulationResult
 """
 
 from __future__ import annotations
@@ -57,6 +58,13 @@ _DEFAULT_STORE = "CA_1"
 _DEFAULT_DEPTS = ["FOODS_1", "FOODS_2", "HOUSEHOLD_1", "HOUSEHOLD_2"]
 _DEFAULT_N_NODES = 5
 _DEFAULT_N_DAYS = 365
+
+# 拓扑叶子门店名（与 config/network_config.yaml 一致）
+_STORE_NAMES = ["store_1", "store_2", "store_3", "store_4"]
+
+# 协同强度默认值——05_B_draft 的 alpha 扫描结论：
+#   alpha=0.8 距相变临界（1.0~1.1）保留 27% 安全边际，成本改善接近最优。
+_DEFAULT_ALPHA = 0.8
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +120,7 @@ def prepare_demand(use_m5: bool = False,
     Returns
     -------
     DemandBundle
-        宽表 + 整表/逐节点 ReplayDemandGenerator。
+        长表 + 整表/逐节点 ReplayDemandGenerator。
     """
     # A 全权模块：确保项目根在 sys.path（脚本直跑时 CWD 可能不在项目根）
     if str(PROJECT_ROOT) not in sys.path:
@@ -158,7 +166,7 @@ def build_forecast_bundle(demand_df: pd.DataFrame,
     Parameters
     ----------
     demand_df : pd.DataFrame
-        宽表需求（来自 :func:`prepare_demand` 或 src.data_loader）。
+        长表需求（来自 :func:`prepare_demand` 或 src.data_loader）。
     forecaster : Forecaster or None, default None
         预测器实例；None 时用 ``WeightedMAForecaster()``。
         可插拔：也可传框架自带基线（Naive/MovingAverage/ExponentialSmoothing）
@@ -199,26 +207,17 @@ def build_forecast_bundle(demand_df: pd.DataFrame,
 
 
 # ---------------------------------------------------------------------------
-# 仿真执行（TODO(B)：等待 src/network/topology.py 交付后接入）
+# 仿真执行（B 侧已接入）
 # ---------------------------------------------------------------------------
 
-def run_network_simulation(bundle: DemandBundle,
-                           forecast_map: dict[str, tuple[np.ndarray, np.ndarray]] | None = None,
-                           ):
-    """TODO(B)：执行 3 层网络仿真——等待 B 交付后接入，当前故意占位。
-
-    预期接入方式（对齐清单 §3.2/3.3；先按"路线甲"跑通：
-    外部预测只注入叶子门店，中间层用框架自推的下游订单均值）::
-
-        from src.network.topology import build_network_from_config   # TODO(B)
-        chain = build_network_from_config("config/network_config.yaml")
-        #                                        ^ 函数名取自《项目代码结构指南》§2.5
-        result = chain.simulate(
-            demand={node: bundle.demand_df[node] ...},          # 逐节点需求序列
-            forecasts_mean={node: fm},                          # A 的 forecast_map
-            forecasts_std={node: fs},
-        )
-        return result   # NetworkSimulationResult（§3.3 交接给 A 做指标校验）
+def run_network_simulation(
+    bundle: DemandBundle,
+    forecast_map: dict[str, tuple[np.ndarray, np.ndarray]] | None = None,
+    alpha: float = _DEFAULT_ALPHA,
+    coordinated: bool = True,
+    config_path: str | Path | None = None,
+):
+    """执行完整网络仿真，返回 ``NetworkSimulationResult``。
 
     Parameters
     ----------
@@ -227,20 +226,82 @@ def run_network_simulation(bundle: DemandBundle,
     forecast_map : dict[str, (fm, fs)] or None, default None
         :func:`build_forecast_bundle` 的产出（预测侧交接物）；
         None 时自动生成（默认 WeightedMAForecaster）。
+        key 既支持 A 宽表列名（如 "SYN_SKU_1"），也支持拓扑节点名（如 "store_1"）。
+    alpha : float, default 0.8
+        协同强度系数。默认值来自 05_B_draft 的 alpha 扫描结论：
+        0.8 距相变临界（1.0~1.1）保留 27% 安全边际，成本改善接近最优。
+    coordinated : bool, default True
+        True  → 协同网络（OrderUpTo + 下游聚合缺口信号）；
+        False → 纯 OrderUpTo 基线（对照实验用）。
+    config_path : str or Path or None, default None
+        拓扑配置文件路径；None 时用
+        ``<project_root>/config/network_config.yaml``。
+
+    Returns
+    -------
+    NetworkSimulationResult
+        含 ``node_results`` / ``edge_flows`` / ``cumulative_bullwhip`` / ``total_cost``。
 
     Raises
     ------
-    NotImplementedError
-        B 的拓扑/协同模块尚未交付——A 侧不伪造仿真行为。
+    KeyError
+        ``forecast_map`` 缺少必需的序列列或节点名。
+    FileNotFoundError
+        配置文件不存在。
     """
+    # B 全权模块：确保项目根在 sys.path
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from src.data_loader import pivot_demand_wide
+    from src.network.topology import (
+        build_coordinated_network_from_config,
+        build_network_from_config,
+    )
+
+    if config_path is None:
+        config_path = PROJECT_ROOT / "config" / "network_config.yaml"
+    config_path = Path(config_path)
+
+    # ---- 1. 从长表提取叶子门店需求：前 4 条序列依次映射到 store_1..4 ----
+    wide = pivot_demand_wide(bundle.demand_df)
+    series_cols = list(wide.columns)[:len(_STORE_NAMES)]
+    col_to_store = dict(zip(series_cols, _STORE_NAMES))
+
+    demand = {
+        store: wide[col].to_numpy(dtype=np.float64)
+        for col, store in col_to_store.items()
+    }
+
+    # ---- 2. 处理预测：支持 A 宽表列名 或 拓扑节点名 两种 key ----
     if forecast_map is None:
-        forecast_map = build_forecast_bundle(bundle.demand_df)
-    raise NotImplementedError(
-        "run_network_simulation 等待 B 同学交付 src/network/topology.py 与 "
-        "src/coordination/* 后接入（预期接口见本方法 docstring 与 "
-        "docs/AB_interface_checklist.md §3.3）。"
-        "当前 A 侧交接物已就绪：DemandBundle + forecast_map"
-        + (f"（{len(forecast_map)} 个节点）" if forecast_map else ""))
+        from src.forecasting.custom_forecaster import WeightedMAForecaster
+        benchmark_forecaster = WeightedMAForecaster(
+            window=8, weights=[1, 1, 1, 1, 2, 2, 3, 4])
+        forecast_map = build_forecast_bundle(
+            bundle.demand_df, forecaster=benchmark_forecaster)
+
+    fm: dict[str, np.ndarray] = {}
+    fs: dict[str, np.ndarray] = {}
+    for col, store in col_to_store.items():
+        if col in forecast_map:
+            fm[store], fs[store] = forecast_map[col]
+        elif store in forecast_map:
+            fm[store], fs[store] = forecast_map[store]
+        else:
+            raise KeyError(
+                f"forecast_map 缺少序列列 {col!r} 或拓扑节点 {store!r}；"
+                f"现有 key: {list(forecast_map)}"
+            )
+
+    # ---- 3. 构建网络（协同 or 基线）----
+    if coordinated:
+        net, _bus = build_coordinated_network_from_config(
+            config_path, alpha=alpha)
+    else:
+        net = build_network_from_config(config_path)
+
+    # ---- 4. 执行仿真 ----
+    return net.simulate(demand, fm, fs)
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +309,7 @@ def run_network_simulation(bundle: DemandBundle,
 # ---------------------------------------------------------------------------
 
 def _self_test() -> int:
-    """自测 A 侧封装：需求准备 -> 预测交接物 -> B 占位的 NotImplementedError。"""
+    """自测 A+B 封装：需求准备 → 预测交接物 → 真实仿真（协同 + 基线）。"""
     # Windows 中文控制台默认 GBK，防 UnicodeEncodeError 导致自测中断
     for _stream in (sys.stdout, sys.stderr):
         try:
@@ -279,15 +340,24 @@ def _self_test() -> int:
         assert list(bundle.demand_df.columns) == ["date", "store_id", "item_id",
                                                   "demand"]
         assert len(bundle.node_generators) == _DEFAULT_N_NODES
+        preview = bundle.demand_df.head(2).copy()
+        preview["demand"] = preview["demand"].round(2)
         report("prepare_demand()（合成兜底路径）", True,
-               bundle.summary() + f"\n{bundle.demand_df.head(2).round(2).to_string()}")
+               bundle.summary() + f"\n{preview.to_string()}")
     except Exception:  # noqa: BLE001
         import traceback
         report("prepare_demand()（合成兜底路径）", False, traceback.format_exc())
 
     # ---------- 步骤 2：build_forecast_bundle（默认 + 可插拔基线） ----------
+        # ---------- 步骤 2：build_forecast_bundle（默认 + 可插拔基线） ----------
     try:
-        forecast_map = build_forecast_bundle(bundle.demand_df)
+        # 与 05_B_draft / benchmark 保持同一预测口径（window=8 加权），
+        # 避免同一方案在不同入口下数字不一致
+        from src.forecasting.custom_forecaster import WeightedMAForecaster
+        benchmark_forecaster = WeightedMAForecaster(
+            window=8, weights=[1, 1, 1, 1, 2, 2, 3, 4])
+        forecast_map = build_forecast_bundle(
+            bundle.demand_df, forecaster=benchmark_forecaster)
         assert set(forecast_map) == set(bundle.node_generators)
         T = bundle.demand_df["date"].nunique()  # 仿真期数（config simulation_days）
         for node, (fm, fs) in forecast_map.items():
@@ -306,26 +376,41 @@ def _self_test() -> int:
         import traceback
         report("build_forecast_bundle(demand_df)", False, traceback.format_exc())
 
-    # ---------- 步骤 3：run_network_simulation 占位（TODO(B)） ----------
+    # ---------- 步骤 3：run_network_simulation（协同 + 基线两模式） ----------
     try:
-        run_network_simulation(bundle, forecast_map)
-    except NotImplementedError as exc:
-        report("run_network_simulation 占位（TODO(B)）", True,
-               f"按设计抛 NotImplementedError（不伪造 B 行为）：\n  {exc}")
+        result_coord = run_network_simulation(bundle, forecast_map,
+                                              alpha=_DEFAULT_ALPHA,
+                                              coordinated=True)
+        assert result_coord is not None
+        assert result_coord.total_cost > 0
+        assert np.isfinite(result_coord.cumulative_bullwhip)
+        assert len(result_coord.node_results) == 7
+        report(f"run_network_simulation（协同 alpha={_DEFAULT_ALPHA}）", True,
+               f"total_cost={result_coord.total_cost:,.2f}  "
+               f"bullwhip={result_coord.cumulative_bullwhip:.4f}  "
+               f"nodes={len(result_coord.node_results)}")
     except Exception:  # noqa: BLE001
         import traceback
-        report("run_network_simulation 占位（TODO(B)）", False,
-               traceback.format_exc())
-    else:
-        report("run_network_simulation 占位（TODO(B)）", False,
-               "应抛 NotImplementedError，却正常返回了——占位失效！")
+        report("run_network_simulation（协同）", False, traceback.format_exc())
+
+    try:
+        result_base = run_network_simulation(bundle, forecast_map,
+                                             coordinated=False)
+        assert result_base is not None
+        assert result_base.total_cost > 0
+        report("run_network_simulation（基线 OrderUpTo）", True,
+               f"total_cost={result_base.total_cost:,.2f}  "
+               f"bullwhip={result_base.cumulative_bullwhip:.4f}")
+    except Exception:  # noqa: BLE001
+        import traceback
+        report("run_network_simulation（基线）", False, traceback.format_exc())
 
     print("\n" + "=" * 68)
     if failures:
         print(f"  自测失败 {len(failures)} 项: {failures}")
         print("=" * 68)
         return 1
-    print("  自测完成：A 侧封装就绪，B 侧接入点已按 TODO 占位。")
+    print("  自测完成：A 侧封装 + B 侧接入全部就绪。")
     print("=" * 68)
     return 0
 
