@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""仿真对比脚本：baseline vs 协同策略（B 同学主，A 同学校验）
+"""仿真对比脚本：baseline vs 协同策略
 
 职责
 ----
@@ -8,7 +8,7 @@
 3. 汇总三项指标：Bullwhip Ratio / True Fill Rate / Total Cost；
 4. 导出 CSV 到 outputs/results/，供 dashboard.py 与 05 demo 消费。
 
-关键口径（对齐清单 §1.6）
+关键口径
 ----
 框架自带 ``fill_rate`` 是"库存非负期数占比"，不是真正的订单满足率。
 本模块自行计算 **True Fill Rate**：
@@ -232,7 +232,7 @@ def run_comparison(
     config_path : str or Path
         ``config/network_config.yaml`` 路径。
     demand, forecasts_mean, forecasts_std : dict
-        叶子门店的需求与预测（见 A 同学 ``build_forecast_bundle``）。
+        叶子门店的需求与预测（见 ``build_forecast_bundle``）。
     alphas : tuple[float, ...], default (0.0, 0.5, 0.8, 1.0)
         要扫描的协同强度。``0.0`` 会走协同网络，但因补偿项为 0，
         总成本应与基线一致（可作一致性校验）。

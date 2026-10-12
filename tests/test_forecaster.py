@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""A同学预测与数据加载模块单元测试（pytest）
-
-负责人: A同学（B 同学的 tests/test_policy.py / test_simulation.py 不在本次范围）
+"""预测与数据加载模块单元测试（pytest）
 
 覆盖范围
 ----

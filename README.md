@@ -43,25 +43,25 @@ python agent/agent_wrapper.py                           # 4/4 PASS，A→B 全�
 
 ```
 supply-chain-agent/
-├── config/                 # B同学：network_config.yaml（拓扑参数）
+├── config/                 # network_config.yaml（拓扑参数）
 ├── data/
-│   ├── raw/                # M5 原始数据（不进 git，仅 .gitkeep 占位）
-│   └── processed/          # A同学：处理好的时序数据
+│   ├── raw/                # M5 原始数据（不进 git，仅 .gitkeep）
+│   └── processed/          # 处理好的时序数据
 ├── src/
-│   ├── data_loader.py              # 【A】M5 / 合成数据加载
-│   ├── forecasting/                # 【A 全权】
+│   ├── data_loader.py              # M5 / 合成数据加载
+│   ├── forecasting/                # 预测模块
 │   │   ├── baseline_forecasters.py     # 基线预测器误差对比
 │   │   └── custom_forecaster.py        # 自研预测器，返回 (mean, std)
-│   ├── network/                    # 【B 全权】
+│   ├── network/                    # 网络拓扑模块
 │   │   └── topology.py                 # 构建 3 层 NetworkSupplyChain
-│   ├── coordination/               # 【B 全权】核心创新点
+│   ├── coordination/               # 协同策略核心创新点
 │   │   ├── signal_protocol.py          # 聚合缺口信号 + SignalBus
 │   │   └── custom_policy.py            # 协同补货策略
-│   ├── simulation/                 # 【A+B 联调】
+│   ├── simulation/                 # 仿真评测
 │   │   └── run_benchmark.py
-│   └── visualization/              # 【A+B 联调】
+│   └── visualization/              # 可视化
 │       └── dashboard.py
-├── agent/agent_wrapper.py  # 【A+B】一键全链路入口
+├── agent/agent_wrapper.py  # 一键全链路入口
 ├── notebooks/              # 01~05 探索与演示（05 为最终 Demo）
 ├── tests/                  # 单元测试
 ├── docs/                   # 文档（见下）
@@ -89,15 +89,13 @@ supply-chain-agent/
 
 | 文档 | 内容 | 读者 |
 |---|---|---|
-| docs/solution.md | **对外方案说明**：创新点、实验设计与结果、局限 —— ⏳ 初稿，暂未提交 | 评委 / 全体 |
+| docs/solution.md | **对外方案说明**：创新点、实验设计与结果、局限 | 评委 / 全体 |
 | [docs/setup_guide.md](docs/setup_guide.md) | **环境搭建完整指南**：版本、代理坑、安装、验证、M5 数据、源码查阅、FAQ | 全体 |
 | [docs/architecture.md](docs/architecture.md) | **架构文档**：数据流、模块清单、各模块详细设计 | 开发者 |
-| [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md) | **A/B 对齐清单**：7 条实测框架事实 + 参数核对 + 接口契约 | A + B，**动手前必读** |
+| [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md) | **框架接口说明**：7 条实测框架事实 + 参数核对 + 接口契约 | 全体 |
 | [docs/acceptance_checklist.md](docs/acceptance_checklist.md) | **验收清单**：A~G 七组共 43 项硬指标 + 已知偏差 | 验收人 |
 | [docs/risk_log.md](docs/risk_log.md) | **风险与排查日志**：框架行为排查记录 | 全体 |
-| notebooks/05_final_demo.ipynb | **最终演示**（已执行，输出内嵌）—— ⏳ 初稿，暂未提交 | 评委 / 全体 |
-
-> ⏳ 标记的两份为**初稿**，目前只在本地，尚未纳入仓库。
+| notebooks/05_final_demo.ipynb | **最终演示**（已执行，输出内嵌） | 评委 / 全体 |
 
 ---
 
@@ -133,7 +131,7 @@ load_dataset("m5", store="CA_1", dept="FOODS_1", freq="daily",
 # 环境验证（可留档）
 python scripts/quickstart_verify.py --json-out outputs/results/env_check.json
 
-# 强制要求真实 M5（取不到则失败退出）
+# 要求使用 M5（取不到则失败退出）
 python scripts/quickstart_verify.py --require-m5
 
 # 只测单条序列
@@ -161,13 +159,3 @@ python -m pytest -q
 
 ---
 
-## 团队分工边界
-
-| 角色 | 负责 |
-|---|---|
-| **A 同学** | 环境搭建与脚本、`data_loader.py`、`forecasting/*`、`tests/test_forecaster.py`、`dashboard.py` 预测侧、文档（solution / architecture / setup / acceptance）；**不写** `network/*` 与 `coordination/*` |
-| **B 同学** | `config/network_config.yaml`、`network/topology.py`、`coordination/*`、`simulation/run_benchmark.py`、`tests/test_policy.py` / `test_simulation.py`、`dashboard.py` 仿真侧 |
-| **共同** | `agent/agent_wrapper.py`、`notebooks/05_final_demo.ipynb`、联调 |
-
-> 边界为硬性约束。A 不写协同策略实现，B 不写预测实现，双方只通过
-> [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md) 第 3 节的接口契约交互。

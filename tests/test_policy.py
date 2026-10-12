@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""B 同学协同模块单元测试（pytest）
-
-负责人: B同学（src/coordination/* 为 B 全权）
+"""协同模块单元测试（pytest）
 
 覆盖范围
 ----

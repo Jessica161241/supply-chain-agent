@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""B 同学：构建三层供应链网络拓扑（region -> city -> store）
+"""构建三层供应链网络拓扑（region -> city -> store）
 
 职责
 ----
@@ -17,7 +17,7 @@ run_baseline_policy(network, demand, forecasts_mean, forecasts_std) -> Simulatio
 * ``SupplyChainGraph.__init__(nodes: dict[str, EchelonConfig],
   edges: dict[tuple[str, str], EdgeConfig])``——边的连接关系由 **dict 的 key
   (上游名, 下游名)** 表达；``EdgeConfig`` 只承载 lead_time / capacity /
-  transport_cost，不含 source/target（对齐清单 §1.7：EdgeConfig.lead_time 不生效，
+  transport_cost，不含 source/target（：EdgeConfig.lead_time 不生效，
   补货提前期配在节点的 EchelonConfig.lead_time 上）。
 * ``NetworkSupplyChain.__init__(graph, policies=None, cost_fns=None)``——
   不接受 echelons/edges/policy 关键字；``policies`` 是 **{节点名: OrderingPolicy}**
@@ -115,8 +115,8 @@ def build_network_from_config(config_path: str | Path) -> NetworkSupplyChain:
             )
 
     # ---- 2. 构造边：{(上游, 下游): EdgeConfig} ----
-    # 注：对齐清单 §1.7 实测 EdgeConfig 的 lead_time 不生效，
-    # 这里只用它占位（capacity=inf, transport_cost=0.0 均为默认）。
+    # 注： 实测 EdgeConfig 的 lead_time 不生效，
+    # 这里只用默认值（capacity=inf, transport_cost=0.0）。
     edges: dict[tuple[str, str], EdgeConfig] = {}
 
     for cw in net["city_warehouses"]:
@@ -151,9 +151,9 @@ def run_baseline_policy(network: NetworkSupplyChain,
         ``{节点名: 需求序列 (T,)}``，只需为**叶子门店**提供（中间节点的需求
         由框架按下游订单之和推出）。
     forecasts_mean / forecasts_std : dict
-        ``{节点名: 预测均值/标准差 (T,)}``，由 A 同学的
+        ``{节点名: 预测均值/标准差 (T,)``，
         ``build_forecast_bundle`` 提供，只需覆盖叶子门店
-        （对齐清单 §1.4）。
+        。
 
     Returns
     -------

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """基线预测器（Naive / MovingAverage / ExponentialSmoothing）滚动预测误差对比
 
-负责人: A同学（src/forecasting/* 为 A 全权，B 只读）
-
 职责
 ----
 1. 实例化 DeepBullwhip 内置的三种基线预测器，在需求时序上执行滚动预测；
@@ -95,7 +93,7 @@ METRIC_COLUMNS = ["MAE", "RMSE", "MAPE"]
 def _clean_values(values: np.ndarray | pd.Series) -> np.ndarray:
     """需求序列基础清洗：float64 一维，NaN/Inf 记 0，负值截断为 0。
 
-    与 src/data_loader.py::_clean_series 同一口径（对齐清单 §2.4 第 22 条：
+    与 src/data_loader.py::_clean_series 同一口径（：
     M5 无销量日即 0，不插值），保持两个模块对"干净需求"的定义一致。
 
     Parameters
@@ -119,7 +117,7 @@ def _coerce_demand_columns(demand_data: pd.DataFrame | pd.Series | np.ndarray
     """把输入统一成 {列名: 清洗后一维数组}。
 
     支持两种 DataFrame 口径：
-    * **长表**（团队注意事项 §8：date/store_id/item_id/demand 四列，
+    * **长表**（date/store_id/item_id/demand 四列，
       data_loader 两个加载函数的返回格式）→ 自动 pivot 成宽表再拆列，
       列名为 ``"{store_id}_{item_id}"``；
     * **宽表**（index = 期数，columns = 序列）→ 直接按列拆。
@@ -146,7 +144,7 @@ def _coerce_demand_columns(demand_data: pd.DataFrame | pd.Series | np.ndarray
         frame = demand_data.to_frame(name=demand_data.name or "demand")
     elif isinstance(demand_data, pd.DataFrame):
         frame = demand_data
-        # 长表（date/store_id/item_id/demand，团队注意事项 §8 口径）→ 自动转宽表
+        # 长表（date/store_id/item_id/demand）→ 自动转宽表
         if {"date", "demand"} <= set(frame.columns) and (
                 {"store_id", "item_id"} & set(frame.columns)):
             if str(PROJECT_ROOT) not in sys.path:

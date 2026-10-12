@@ -10,7 +10,7 @@ network:
   # ---- 区域仓（1个）----
   regional_warehouse:
     name: "regional_warehouse"
-    lead_time: 4                # 补货提前期（节点级，见对齐清单 §1.7）
+    lead_time: 4                # 补货提前期（节点级）
     holding_cost: 0.08
     backorder_cost: 0.40
     service_level: 0.95
@@ -46,14 +46,14 @@ network:
     initial_inventory: 50
     depreciation_rate: 0.0
 
-# SKU 数量（对齐 A 同学 data_loader 的 sku_count=5，但拓扑只有 4 个终端，
+# SKU 数量（data_loader 的 sku_count=5，但拓扑只有 4 个终端，
 # 实际仿真按 4 条 dept 序列映射到 store_1..4）
 sku_count: 4
 
-# 仿真天数（对齐 A 同学 data_loader 的 M5_MAX_PERIODS=365）
+# 仿真天数（data_loader 的 M5_MAX_PERIODS=365）
 simulation_days: 365
 
-# 需求参数（合成数据调试用，A 同学 data_loader 已内置，此处仅记录）
+# 需求参数（合成数据调试用，data_loader 已内置，此处仅记录）
 demand:
   mean: 10
   std: 3
