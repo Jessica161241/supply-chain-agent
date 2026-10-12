@@ -21,7 +21,7 @@
 
 ---
 
-## B 组 · 数据加载（A 负责，6 项）
+## B 组 · 数据加载（6 项）
 
 | # | 验收项 | 验证方式 | 期望 | 状态 |
 |---|---|---|---|---|
@@ -34,7 +34,7 @@
 
 ---
 
-## C 组 · 预测模块（A 负责，8 项）
+## C 组 · 预测模块（8 项）
 
 | # | 验收项 | 验证方式 | 期望 | 状态 |
 |---|---|---|---|---|
@@ -49,7 +49,7 @@
 
 ---
 
-## D 组 · 网络与协同（B 负责，A 只读校验，5 项）
+## D 组 · 网络与协同（5 项）
 
 | # | 验收项 | 验证方式 | 期望 | 状态 |
 |---|---|---|---|---|
@@ -90,14 +90,12 @@
 
 | # | 验收项 | 验证方式 | 期望 | 状态 |
 |---|---|---|---|---|
-| G1 | 方案说明齐备 | `ls docs/solution.md` | 存在，含创新点 / 实验 / 结果 / 局限 | [ ] 已写好，**暂未提交**（本地保留，待与方案说明一并提交） |
+| G1 | 方案说明齐备 | `ls docs/solution.md` | 存在，含问题定义 / 方法 / 实验设置 / 结果 / 局限 | [x] |
 | G2 | 架构文档与现状一致 | 通读 `docs/architecture.md` | 不再出现"B 待交付""TODO(B)"等过期表述 | [x] |
 | G3 | 接口对齐清单在库 | `ls docs/AB_interface_checklist.md` | 存在，7 条实测事实完整 | [x] |
 | G4 | 环境指南在库 | `ls docs/setup_guide.md` | 存在，含代理坑 / 三级降级 / FAQ | [x] |
-| G5 | 最终 Demo notebook 可执行 | `jupyter nbconvert --execute notebooks/05_final_demo.ipynb` | 0 个 error 输出，图表内嵌 | [ ] 初稿已完成、本地已执行验证，**暂未提交** |
+| G5 | 最终 Demo notebook 可执行 | `jupyter nbconvert --execute notebooks/05_final_demo.ipynb` | 0 个 error 输出，图表内嵌 | [x] |
 
-> ⚠️ 本组 G1（`docs/solution.md`）与 G5（`notebooks/05_final_demo.ipynb`）两份为**初稿**，
-> 暂未纳入仓库；上表其余各项均已随仓库提交，可用括号内命令直接复验。
 | G6 | 结果图表齐备 | `ls outputs/figures/*.png` | ≥ 6 张：需求总览 / 均值对比 / 不确定带 / 对比总览 / 牛鞭放大 / 节点成本 | [x] |
 | G7 | 环境自检结果留档 | `ls outputs/results/env_check.json` | 存在，`n_failed = 0` | [x] |
 | G8 | 骨架可重建 | `bash scripts/init_project_skeleton.sh --dry-run` | 幂等，不覆盖已有文件 | [x] |
@@ -114,8 +112,6 @@ python -m pytest -q
 python scripts/quickstart_verify.py --json-out outputs/results/env_check.json
 python agent/agent_wrapper.py
 jupyter nbconvert --to notebook --execute --inplace notebooks/05_final_demo.ipynb
-
-# 注：最后一行针对的是本地初稿，该 notebook 暂未纳入仓库，其他人拉取后无此文件
 ```
 
 ---
@@ -138,5 +134,5 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/05_final_demo.ipyn
 
 | 日期 | 变更 | 来源 |
 |---|---|---|
-| 2026-10-01 | 初版（在 git 拉取事故中丢失） | A 同学 |
-| 2026-10-11 | 按当前实现重建：A~G 七组共 43 项，逐项附可执行验证方式；新增"已知偏差"一节 | A 同学 |
+| 2026-10-01 | 初版（在 git 拉取事故中丢失） | — |
+| 2026-10-11 | 按当前实现重建：A~G 七组共 43 项，逐项附可执行验证方式；新增"已知偏差"一节 | — |

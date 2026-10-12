@@ -157,7 +157,7 @@ else:
 
 | 节点 | 需求来源 | 预测来源 |
 |---|---|---|
-| `store`（叶子） | 外部传入的 M5 需求 | **A 同学的 mean/std** ✅ |
+| `store`（叶子） | 外部传入的需求序列 | **外部提供的 mean/std** ✅ |
 | `city_warehouse` | 下游 store 的订单之和 | ❌ 框架用"最近 8 期下游订单均值"顶替 |
 | `regional_warehouse` | 下游 city 的订单之和 | ❌ 同上 |
 
@@ -331,16 +331,23 @@ SupplyChainEchelon(name=name, lead_time=cfg.lead_time, ...)   # cfg 是 EchelonC
 
 ### 2.4 需求口径（A 主导，B 确认）
 
+> **本次实验的数据来源已确认为合成 AR(1)（seed=42 可复现）**；
+> M5 真实数据的加载路径已实现并保留，本次未启用。下表按此口径记录。
+
 | # | 参数 | 值 | 说明 | 主导 | 确认 | 状态 |
 |---|---|---|---|---|---|---|
-| 18 | 数据集 | M5（兜底：合成 AR(1)） | | A | B | [ ] |
-| 19 | store 维度 | `CA_1` | 见 1.2 选型表 | A | B | [ ] |
-| 20 | dept 维度 | `FOODS_1` / `FOODS_2` / `HOUSEHOLD_1` / `HOUSEHOLD_2` | 共 4 条 | A | B | [ ] |
-| 21 | 需求聚合方式 | 单条序列直接使用；多品类求和成"门店需求" | | A | B | [ ] |
-| 22 | 缺失值 / 零值处理 | 保留 0（M5 无销量日即 0），不做插值 | **需 A/B 共同确认** | A | B | [ ] |
-| 23 | 是否截断 | 取前 365 天，超出部分丢弃（对齐 config simulation_days=365） | 2026-10-04 A 按队长注意事项拍板 | A | B | [x] |
-| 24 | 需求归一化 | 不归一化，保留原始销量单位 | 保证总成本可解释 | A | B | [ ] |
-| 25 | 各终端需求映射 | store_1..4 分别对应第 20 条的 4 条序列 | | A | B | [ ] |
+| 18 | 数据集 | **合成 AR(1)** | 本次实验使用；M5 路径已实现但未启用 | A | B | [x] |
+| 19 | 序列数 | 4（`n_nodes=4`） | 对齐 config `sku_count=4`，对应 4 个终端门店 | A | B | [x] |
+| 20 | 序列命名 | `store_id="SYN"`、`item_id="SKU_1..4"` | 宽表列名 `SYN_SKU_1..4` | A | B | [x] |
+| 21 | 生成参数 | `mean=10`、平稳 `std=3` | AR(1) `rho=0.6`、创新项 `sigma=2.4` → 平稳 std≈3 | A | B | [x] |
+| 22 | 缺失值 / 零值处理 | 负值截断为 0、NaN/Inf 记 0，不做插值 | | A | B | [x] |
+| 23 | 期数 | 365 天（daily） | 对齐 config `simulation_days=365` | A | B | [x] |
+| 24 | 需求归一化 | 不归一化，保留原始单位 | 保证总成本可解释 | A | B | [x] |
+| 25 | 各终端需求映射 | `store_1..4` ← `SKU_1..4` | 一一对应，无需截断 | A | B | [x] |
+| 26 | 可复现性 | 固定 `seed=42` | 同 seed 逐位一致 | A | B | [x] |
+
+> M5 口径（切换到真实数据时适用）：store `CA_1` × dept `FOODS_1` / `FOODS_2` /
+> `HOUSEHOLD_1` / `HOUSEHOLD_2` 共 4 条序列，daily，截取前 365 天。
 
 ---
 
@@ -451,7 +458,7 @@ EchelonResult:
 | `docs/AB_interface_checklist.md` | A 主导维护 | B 确认 |
 | `docs/risk_log.md` | B | |
 | `scripts/*` | A | |
-| `README.md` / `README_A.md` | A | `README_A.md` 为 A 侧工作日志 |
+| `README.md` | A | 项目入口 |
 | `requirements.txt` / `.gitignore` / `.gitattributes` | A | B 只读 |
 
 ---

@@ -45,22 +45,22 @@ python agent/agent_wrapper.py                           # 4/4 PASS，A→B 全�
 supply-chain-agent/
 ├── config/                 # network_config.yaml（拓扑参数）
 ├── data/
-│   ├── raw/                # M5 原始数据（不进 git，仅 .gitkeep）
+│   ├── raw/                # M5 原始数据（本次未启用；不进 git，仅 .gitkeep 占位）
 │   └── processed/          # 处理好的时序数据
 ├── src/
-│   ├── data_loader.py              # M5 / 合成数据加载
-│   ├── forecasting/                # 预测模块
+│   ├── data_loader.py              # 需求加载与清洗（合成 AR(1) / M5）
+│   ├── forecasting/
 │   │   ├── baseline_forecasters.py     # 基线预测器误差对比
 │   │   └── custom_forecaster.py        # 自研预测器，返回 (mean, std)
-│   ├── network/                    # 网络拓扑模块
+│   ├── network/
 │   │   └── topology.py                 # 构建 3 层 NetworkSupplyChain
-│   ├── coordination/               # 协同策略核心创新点
+│   ├── coordination/               # 核心创新点
 │   │   ├── signal_protocol.py          # 聚合缺口信号 + SignalBus
 │   │   └── custom_policy.py            # 协同补货策略
-│   ├── simulation/                 # 仿真评测
-│   │   └── run_benchmark.py
-│   └── visualization/              # 可视化
-│       └── dashboard.py
+│   ├── simulation/
+│   │   └── run_benchmark.py            # 基线 vs 协同对比跑批
+│   └── visualization/
+│       └── dashboard.py                # 预测层 + 仿真对比层绘图
 ├── agent/agent_wrapper.py  # 一键全链路入口
 ├── notebooks/              # 01~05 探索与演示（05 为最终 Demo）
 ├── tests/                  # 单元测试
@@ -89,13 +89,15 @@ supply-chain-agent/
 
 | 文档 | 内容 | 读者 |
 |---|---|---|
-| docs/solution.md | **对外方案说明**：创新点、实验设计与结果、局限 | 评委 / 全体 |
-| [docs/setup_guide.md](docs/setup_guide.md) | **环境搭建完整指南**：版本、代理坑、安装、验证、M5 数据、源码查阅、FAQ | 全体 |
+| [docs/solution.md](docs/solution.md) | **对外方案说明**：问题定义、方法、实验设置与结果、局限 | 评委 / 全体 |
+| [docs/setup_guide.md](docs/setup_guide.md) | **环境搭建完整指南**：版本、代理坑、安装、验证、需求数据、源码查阅、FAQ | 全体 |
 | [docs/architecture.md](docs/architecture.md) | **架构文档**：数据流、模块清单、各模块详细设计 | 开发者 |
-| [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md) | **框架接口说明**：7 条实测框架事实 + 参数核对 + 接口契约 | 全体 |
+| [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md) | **A/B 对齐清单**：7 条实测框架事实 + 参数核对 + 接口契约 | A + B，**动手前必读** |
 | [docs/acceptance_checklist.md](docs/acceptance_checklist.md) | **验收清单**：A~G 七组共 43 项硬指标 + 已知偏差 | 验收人 |
 | [docs/risk_log.md](docs/risk_log.md) | **风险与排查日志**：框架行为排查记录 | 全体 |
-| notebooks/05_final_demo.ipynb | **最终演示**（已执行，输出内嵌） | 评委 / 全体 |
+| [docs/incident_log.md](docs/incident_log.md) | **事故记录**：两次影响交付的事故与处理方式 | 维护者 |
+| [notebooks/05_final_demo.ipynb](notebooks/05_final_demo.ipynb) | **最终演示**（已执行，输出内嵌） | 评委 / 全体 |
+
 
 ---
 
@@ -131,7 +133,7 @@ load_dataset("m5", store="CA_1", dept="FOODS_1", freq="daily",
 # 环境验证（可留档）
 python scripts/quickstart_verify.py --json-out outputs/results/env_check.json
 
-# 要求使用 M5（取不到则失败退出）
+# 强制要求真实 M5（取不到则失败退出）
 python scripts/quickstart_verify.py --require-m5
 
 # 只测单条序列
@@ -159,3 +161,31 @@ python -m pytest -q
 
 ---
 
+## 数据来源说明
+
+本次实验的全部结果基于**合成 AR(1) 需求数据**生成：
+
+| 项 | 值 |
+|---|---|
+| 生成方式 | `load_synthetic_demand(n_nodes=4, n_days=365, seed=42)` |
+| 序列数 | 4（对应拓扑的 4 个终端门店） |
+| 期数 | 365 天（daily，对齐 `simulation_days`） |
+| 随机性 | AR(1)，`rho=0.6`、创新项 `sigma=2.4`，序列平稳 `std≈3`、`mean≈10` |
+| 可复现性 | 固定 `seed=42`，同 seed 逐位一致 |
+
+M5 真实数据的加载路径（本地 CSV → Kaggle 自动下载）已完整实现并保留，
+**本次实验未启用**。拿到 `data/raw/m5/sales_train_evaluation.csv` 后，
+把 `prepare_demand(use_m5=True)` 打开即可切换到真实数据重跑全流程。
+
+---
+
+## 模块接口
+
+各模块之间只通过 [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md)
+第 3 节定义的冻结契约交互，互不依赖内部实现：
+
+| 交接物 | 形态 |
+|---|---|
+| 需求数据 | 长表 DataFrame（`date` / `store_id` / `item_id` / `demand`）+ `ReplayDemandGenerator` |
+| 预测 | `dict[节点名, (fm, fs)]`，fm/fs 均为 `(T,)` float64；`fs` 允许为 0 |
+| 仿真结果 | `NetworkSimulationResult`（`node_results` / `edge_flows` / `cumulative_bullwhip` / `total_cost`） |
