@@ -1,7 +1,7 @@
 # 环境搭建完整指南
 
 > 赛题二 · 方向二「多级库存智能协同」
-> 读者：A / B 同学、验收人。**从零开始照做即可跑通全流程。**
+> 读者：全体成员、验收人。**从零开始照做即可跑通全流程。**
 
 ---
 
@@ -102,7 +102,7 @@ python -m pip install -r requirements.txt
 
 `requirements.txt` 是**锁版本的 `pip freeze` 输出**，按它重建的环境与"通过全部测试的验证环境"一致。
 
-> 版本漂移的坑：本文件曾按 B 同学的环境生成（`pandas==3.0.6` / `numpy==2.5.3`），
+> 版本漂移的坑：本文件曾被按其它机器的环境重写过（`pandas==3.0.6` / `numpy==2.5.3`），
 > 与实际验证环境不符，已改回实测版本（`pandas==2.3.3` / `numpy==2.2.6`）。
 > **如果团队要升 pandas 3.x，先对 A 模块做回归测试再改。**
 
@@ -131,7 +131,7 @@ python scripts/quickstart_verify.py
   共 8 项，通过 8 项，失败 0 项 —— 环境就绪
 ```
 
-八项检查：Python 版本 / 依赖包版本 / 关键 API 导入 / 数据集加载（M5→合成降级）/
+八项检查：Python 版本 / 依赖包版本 / 关键 API 导入 / 数据集加载（合成 / M5 三级降级）/
 `ReplayDemandGenerator` 转换 / Serial 仿真 / Network(DAG) 仿真 / 本项目 3 层拓扑。
 
 常用参数：
@@ -160,19 +160,43 @@ python -m pytest -q        # 期望 79 passed, 1 skipped
 
 ---
 
-## 6. M5 数据
+## 6. 需求数据
 
-`src/data_loader.py` 走**三级降级**，任何一级成功都能继续：
+### 6.1 本次实验的数据来源：合成 AR(1)
+
+**本次提交的全部实验结果都基于合成 AR(1) 数据**，不需要任何外部数据：
+
+```python
+from src.data_loader import load_synthetic_demand
+df = load_synthetic_demand(n_nodes=4, n_days=365, seed=42)
+```
+
+| 项 | 值 |
+|---|---|
+| 序列数 | 4（对应拓扑的 4 个终端门店） |
+| 期数 | 365 天（daily，对齐 `config.simulation_days`） |
+| 统计量 | `mean≈10`、平稳 `std≈3`（AR(1)，`rho=0.6`、创新项 `sigma=2.4`） |
+| 可复现性 | 固定 `seed=42`，同 seed 逐位一致 |
+| 序列命名 | `store_id="SYN"`、`item_id="SKU_1..4"`，宽表列名 `SYN_SKU_1..4` |
+
+因此 `quickstart_verify.py` 输出里的标签是 `SYN/SKU_1` 而不是 `CA_1/FOODS_1`——
+这是正常的，说明当前跑的是合成数据。
+
+### 6.2 M5 真实数据（加载路径已实现，本次未启用）
+
+`src/data_loader.py` 保留了 M5 的完整三级降级路径，任何一级成功都能继续：
 
 ```
 ① data/raw/m5/sales_train_evaluation.csv（本地 CSV，最快）
         v 找不到
 ② Kaggle 自动下载（缓存 ~/.deepbullwhip/data/m5/）
         v 拿不到凭证
-③ 合成 AR(1)（seed 可复现）—— 不装任何东西也能跑
+③ 合成 AR(1)（seed 可复现）—— 本次实验用的就是这一级
 ```
 
-### 走 ① 本地 CSV
+要用真实 M5 重跑，按下面任一条准备数据即可。
+
+#### 走 ① 本地 CSV
 
 ```bash
 mkdir -p data/raw/m5
@@ -191,12 +215,11 @@ export KAGGLE_USERNAME="你的用户名"
 export KAGGLE_KEY="你的 API Key"
 ```
 
-### 走 ③ 合成兜底（默认）
+### 走 ③ 合成数据（本次实验使用）
 
-不用做任何事。注意合成数据的 `item_id` 是 `SKU_1..SKU_n`（不是 M5 的 dept 名），
-所以 `quickstart_verify.py` 输出里的标签会是 `SYN/SKU_1` 而不是 `CA_1/FOODS_1`。
+不用做任何事，见 §6.1。
 
-### 数据口径
+### M5 数据口径（切换到真实数据时适用）
 
 | 项 | 值 |
 |---|---|
@@ -204,6 +227,9 @@ export KAGGLE_KEY="你的 API Key"
 | 维度 | 框架 M5 加载**只有 store + dept**，没有 item 维度，`item_id` 承载 dept 级序列 ID |
 | 频率 / 长度 | daily，截取前 **365 天**（对齐 `config.simulation_days`） |
 | 零值与缺失 | NaN/Inf 记 0、负值截断为 0、**不做插值**（M5 无销量日即 0，是真实信息） |
+
+切换方式：把 `prepare_demand(use_m5=True)` 打开，或用
+`python scripts/quickstart_verify.py --require-m5` 强制校验 M5 路径。
 
 ---
 
