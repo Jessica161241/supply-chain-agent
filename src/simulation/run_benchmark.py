@@ -98,6 +98,13 @@ class BenchmarkResult:
 # 内部工具
 # ---------------------------------------------------------------------------
 
+def _cumulative_shortage(inv) -> float:
+    inv = np.asarray(inv, dtype=np.float64)
+    backlog = np.maximum(0.0, -inv)
+    backlog_prev = np.concatenate([[0.0], backlog[:-1]])
+    return float(np.maximum(0.0, backlog - backlog_prev).sum())
+
+
 def _true_fill_rate(
     result,
     graph,
@@ -121,7 +128,7 @@ def _true_fill_rate(
     """
     inv = np.asarray(result.node_results[node_name].inventory_levels,
                      dtype=np.float64)
-    shortage = float(np.maximum(0.0, -inv).sum())
+    shortage = _cumulative_shortage(inv)
 
     downstream = graph.downstream_neighbors(node_name)
     if not downstream:
@@ -177,7 +184,7 @@ def _evaluate(
     for name in result.node_results:
         inv = np.asarray(result.node_results[name].inventory_levels,
                          dtype=np.float64)
-        shortage = float(np.maximum(0.0, -inv).sum())
+        shortage = _cumulative_shortage(inv)
         total_shortage += shortage
 
         downstream = graph.downstream_neighbors(name)

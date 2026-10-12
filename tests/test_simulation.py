@@ -302,3 +302,11 @@ class TestSimulationEdgeCases:
         net = build_network_from_config(CONFIG_PATH)
         result = run_baseline_policy(net, demand, fm, fs)
         assert np.isfinite(result.total_cost)
+
+    def test_cumulative_shortage_does_not_double_count_backlog(self):
+        from src.simulation.run_benchmark import _cumulative_shortage
+
+        assert _cumulative_shortage([-10, -20, -20, -5, 0, 0]) == pytest.approx(20.0)
+        assert _cumulative_shortage([5, 5, 5]) == pytest.approx(0.0)
+        assert _cumulative_shortage([-10, 0, -8, -8]) == pytest.approx(18.0)
+
