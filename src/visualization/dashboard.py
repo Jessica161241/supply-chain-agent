@@ -393,19 +393,19 @@ def plot_signal_flow(
     """
     from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-    fig, ax = plt.subplots(figsize=(13, 7.5))
+    fig, ax = plt.subplots(figsize=(13, 8.5))
     ax.set_xlim(0, 13)
-    ax.set_ylim(0, 7.5)
+    ax.set_ylim(0, 8.5)
     ax.axis("off")
 
     nodes = {
-        "regional": (6.5, 6.0, "Regional\nWarehouse", "top"),
-        "city1":    (3.5, 4.2, "City WH #1",       "mid"),
-        "city2":    (9.5, 4.2, "City WH #2",       "mid"),
-        "s1":       (1.5, 2.0, "Store 1",          "leaf"),
-        "s2":       (3.7, 2.0, "Store 2",          "leaf"),
-        "s3":       (8.3, 2.0, "Store 3",          "leaf"),
-        "s4":       (10.5, 2.0, "Store 4",         "leaf"),
+        "regional": (6.5, 7.0, "Regional\nWarehouse", "top"),
+        "city1":    (3.5, 5.2, "City WH #1",       "mid"),
+        "city2":    (9.5, 5.2, "City WH #2",       "mid"),
+        "s1":       (1.5, 2.8, "Store 1",          "leaf"),
+        "s2":       (3.7, 2.8, "Store 2",          "leaf"),
+        "s3":       (8.3, 2.8, "Store 3",          "leaf"),
+        "s4":       (10.5, 2.8, "Store 4",         "leaf"),
     }
     edges = [
         ("regional", "city1"), ("regional", "city2"),
@@ -443,23 +443,23 @@ def plot_signal_flow(
                 fontsize=10.5, fontweight="bold", color="#111111")
 
     ax.add_patch(FancyArrowPatch(
-        (0.6, 7.05), (1.6, 7.05),
+        (0.6, 8.05), (1.6, 8.05),
         arrowstyle="-|>", mutation_scale=14,
         linewidth=1.8, color="#2E86AB",
     ))
-    ax.text(1.75, 7.05, "order flow  (upward)",
+    ax.text(1.75, 8.05, "order flow  (upward)",
             va="center", fontsize=10, color="#2E86AB")
 
     ax.add_patch(FancyArrowPatch(
-        (3.6, 7.05), (4.6, 7.05),
+        (3.6, 8.05), (4.6, 8.05),
         arrowstyle="-|>", mutation_scale=14,
         linewidth=1.8, color="#D62828",
         linestyle=(0, (5, 3)),
     ))
-    ax.text(4.75, 7.05, "signal flow  (downward, aggregated)",
+    ax.text(4.75, 8.05, "signal flow  (downward, aggregated)",
             va="center", fontsize=10, color="#D62828")
 
-    info_x, info_y, info_w, info_h = 0.4, 0.3, 5.8, 1.45
+    info_x, info_y, info_w, info_h = 0.4, 0.4, 5.8, 1.65
     ax.add_patch(FancyBboxPatch(
         (info_x, info_y), info_w, info_h,
         boxstyle="round,pad=0.05,rounding_size=0.08",
@@ -477,11 +477,11 @@ def plot_signal_flow(
     ax.text(info_x + 0.15, info_y + info_h - 1.00,
             "  n_sources, node_name, timestep",
             fontsize=9, family="monospace", color="#222222")
-    ax.text(info_x + 0.15, info_y + info_h - 1.28,
+    ax.text(info_x + 0.15, info_y + info_h - 1.30,
             "No SKU-level orders, no inventory detail exposed.",
             fontsize=8.5, style="italic", color="#555555")
 
-    ax.text(7.0, 0.75,
+    ax.text(7.0, 1.2,
             "Each leaf writes its signal on SignalBus;\n"
             "parent aggregates downstream via read_downstream().\n"
             "Combined gap_std = sqrt(sum of variances).",
@@ -497,7 +497,6 @@ def plot_signal_flow(
         save_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
     return fig
-
 
 # ---------------------------------------------------------------------------
 # 内部自测（python src/visualization/dashboard.py）
