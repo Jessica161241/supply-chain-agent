@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
-"""M5 数据集 / 合成需求数据加载，输出 ReplayDemandGenerator（A 同学）
+"""M5 数据集 / 合成需求数据加载，输出 ReplayDemandGenerator
 
 职责
 ----
 1. 封装 M5 数据集子集的加载与基础清洗（NaN 处理、时间序列连续性保证）；
 2. 提供合成需求数据集生成函数，作为 M5 数据不可用时的调试兜底；
 3. 把需求 DataFrame 转成 DeepBullwhip 框架的 ``ReplayDemandGenerator``，
-   该对象是 A（数据/预测）→ B（拓扑/仿真）两个模块之间的数据交接点。
+   该对象是需求数据交给网络仿真模块的交接点。
+
+> 本次实验的数据来源：**合成 AR(1)，seed=42**。M5 真实数据的加载路径已实现
+> 并保留（见下），但本次未启用。
 
 对外接口（参数名与顺序与任务书严格一致；返回格式按团队注意事项口径，见 §长表契约）
 ----
@@ -23,14 +26,14 @@
   ``item_id``（str）、``demand``（float64），按 date → store_id → item_id 排序；
 * **item_id 承载 M5 的 dept 级序列 ID**（FOODS_1..3 / HOBBIES_1..2 / HOUSEHOLD_1..2）
   ——框架 loader 只有 store+dept 两个维度、没有 item 维度（对齐清单 §1.2）；
-* ``node_id`` 不在此列：门店/SKU → 拓扑节点的映射属 B 的拓扑配置，
-  B 侧可用 ``pivot_demand_wide`` 得到"一列一个序列"的宽表后按列名映射；
-* 供 A 内部流程（预测/绘图）使用的宽表：``pivot_demand_wide`` 一键转换
+* ``node_id`` 不在此列：门店/SKU → 拓扑节点的映射属拓扑配置，
+  仿真层可用 ``pivot_demand_wide`` 得到"一列一个序列"的宽表后按列名映射；
+* 供预测/绘图等内部流程使用的宽表：``pivot_demand_wide`` 一键转换
   （index = date，columns = "{store_id}_{item_id}"）。
 
-合成数据默认参数（对齐 config/network_config.yaml 基准，团队注意事项 §8）
+合成数据默认参数（对齐 config/network_config.yaml 基准）
 ----
-* ``sku_count=5``  → n_nodes 默认 5；
+* ``sku_count=4``  → n_nodes 默认 4（对应 4 个终端门店）；
 * ``simulation_days=365`` → n_days 默认 365，date 为逐日日期；
 * ``demand.mean=10`` → AR(1) 均值 mu=10；
 * ``demand.std=3`` → 需求序列平稳标准差 3。AR(1) 的平稳 std = sigma/sqrt(1-rho²)，
@@ -117,11 +120,12 @@ M5_DEPTS = frozenset(
 _ITEM_ID_RE = re.compile(r"^[A-Z]+_\d+_\d+$")
 
 # 合成数据默认参数 —— 对齐 config/network_config.yaml 基准：
-#   sku_count=5 -> n_nodes 默认 5；simulation_days=365 -> n_days 默认 365（逐日）；
+#   sku_count=4 -> n_nodes 默认 4（对应拓扑的 4 个终端门店）；
+#   simulation_days=365 -> n_days 默认 365（逐日）；
 #   demand.mean=10 -> AR(1) 均值 mu=10；
 #   demand.std=3 -> 序列平稳 std=3。AR(1) 平稳 std = sigma/sqrt(1-rho²)，
 #   rho=0.6 时创新项 sigma = 3 * sqrt(1-0.36) = 2.4。
-_SYN_DEFAULT_NODES = 5
+_SYN_DEFAULT_NODES = 4
 _SYN_DEFAULT_DAYS = 365
 _SYN_MU = 10.0
 _SYN_RHO = 0.6
@@ -354,7 +358,7 @@ def load_m5_demand(store_ids: str | Sequence[str],
         * ``item_id``：M5 dept 级序列 ID（如 "FOODS_1"，承载品类聚合粒度）；
         * ``demand``：float64 需求量（原始销量单位，不归一化）。
         按 date → store_id → item_id 排序，每 (store, dept) 序列日期连续无空洞。
-        B 侧可用 :func:`pivot_demand_wide` 转宽表后按列名映射终端节点。
+        仿真层可用 :func:`pivot_demand_wide` 转宽表后按列名映射终端节点。
 
     Raises
     ------
@@ -406,15 +410,16 @@ def load_synthetic_demand(n_nodes: int = _SYN_DEFAULT_NODES,
                           seed: int = 42) -> pd.DataFrame:
     """生成合成时序需求数据（M5 不可用时的调试兜底，seed 保证可复现）。
 
-    默认参数对齐 ``config/network_config.yaml`` 基准（团队注意事项 §8）：
-    ``sku_count=5``、``simulation_days=365``、``demand.mean=10``、``demand.std=3``。
+    默认参数对齐 ``config/network_config.yaml`` 基准：
+    ``sku_count=4``、``simulation_days=365``、``demand.mean=10``、``demand.std=3``。
     每个节点用框架自带的 AR(1) 需求过程 ``load_ar1`` 生成（内部对负值截断），
     节点间通过 ``seed + i`` 差异化，同 seed 逐位可复现。
 
     Parameters
     ----------
-    n_nodes : int, default 5
-        需求序列（SKU/节点）数量，>= 1。默认对齐 config ``sku_count=5``。
+    n_nodes : int, default 4
+        需求序列（SKU/节点）数量，>= 1。默认对齐 config ``sku_count=4``
+        （对应拓扑的 4 个终端门店）。
     n_days : int, default 365
         期数（逐日日期），>= 2。默认对齐 config ``simulation_days=365``。
     seed : int, default 42
@@ -464,7 +469,7 @@ def load_synthetic_demand(n_nodes: int = _SYN_DEFAULT_NODES,
 def pivot_demand_wide(demand_df: pd.DataFrame) -> pd.DataFrame:
     """把长表需求 DataFrame 转成宽表（index=date，columns="{store_id}_{item_id}"）。
 
-    供预测/绘图等内部流程使用（预测层按"一列一条序列"处理），也供 B 侧
+    供预测/绘图等内部流程使用（预测层按"一列一条序列"处理），也供仿真层
     做门店/SKU → 拓扑节点映射。重复的 (date, store, item) 组合按 demand 求和。
 
     Parameters
@@ -505,7 +510,7 @@ def pivot_demand_wide(demand_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_replay_generator(demand_df: pd.DataFrame | pd.Series) -> ReplayDemandGenerator:
-    """把需求 DataFrame 转成框架的 ``ReplayDemandGenerator``（A→B 交接点）。
+    """把需求 DataFrame 转成框架的 ``ReplayDemandGenerator``（需求交接点）。
 
     ``ReplayDemandGenerator.__init__(data)`` 只接受 1-D 序列
     （np.ndarray | list[float]，deepbullwhip/demand/replay.py），因此：
@@ -607,18 +612,18 @@ def _self_test() -> int:
     # ---------- 步骤 1：load_synthetic_demand（长表 + config 对齐） ----------
     df_syn: pd.DataFrame | None = None
     try:
-        df_syn = load_synthetic_demand()  # 默认 5 SKU × 365 天（config 基准）
+        df_syn = load_synthetic_demand()  # 默认 4 SKU × 365 天（config 基准）
         df_same = load_synthetic_demand()
         df_other = load_synthetic_demand(seed=7)
         assert list(df_syn.columns) == LONG_COLUMNS, f"列错误: {list(df_syn.columns)}"
-        assert df_syn.shape == (5 * 365, 4), f"形状异常: {df_syn.shape}"
+        assert df_syn.shape == (4 * 365, 4), f"形状异常: {df_syn.shape}"
         assert df_syn["date"].nunique() == 365, "日期数应为 simulation_days=365"
-        assert sorted(df_syn["item_id"].unique()) == [f"SKU_{i}" for i in range(1, 6)]
+        assert sorted(df_syn["item_id"].unique()) == [f"SKU_{i}" for i in range(1, 5)]
         assert (df_syn["demand"] >= 0).all() and not df_syn.isna().any().any()
         assert df_syn.equals(df_same), "同 seed 两次生成结果应完全一致"
         assert not df_syn.equals(df_other), "不同 seed 应产生不同数据"
         report(
-            "load_synthetic_demand()（默认 5 SKU × 365 天）", True,
+            "load_synthetic_demand()（默认 4 SKU × 365 天）", True,
             f"长表形状 {df_syn.shape}，列 {list(df_syn.columns)}\n"
             f"日期 {df_syn['date'].min().date()} ~ {df_syn['date'].max().date()}"
             f"（{df_syn['date'].nunique()} 天，对齐 simulation_days=365）\n"
@@ -626,7 +631,7 @@ def _self_test() -> int:
             + df_syn.head(3).to_string(),
         )
     except Exception:  # noqa: BLE001
-        report("load_synthetic_demand()（默认 5 SKU × 365 天）",
+        report("load_synthetic_demand()（默认 4 SKU × 365 天）",
                False, traceback.format_exc())
 
     # ---------- 步骤 2：config 参数对齐（demand.mean=10 / demand.std=3） ----------
@@ -653,12 +658,12 @@ def _self_test() -> int:
     else:
         try:
             wide = pivot_demand_wide(df_syn)
-            assert wide.shape == (365, 5), f"宽表形状异常: {wide.shape}"
-            assert list(wide.columns) == [f"SYN_SKU_{i}" for i in range(1, 6)]
+            assert wide.shape == (365, 4), f"宽表形状异常: {wide.shape}"
+            assert list(wide.columns) == [f"SYN_SKU_{i}" for i in range(1, 5)]
             assert wide.index.name == "date"
             assert not wide.isna().any().any()
             report("pivot_demand_wide(demand_df)", True,
-                   f"宽表形状 {wide.shape}（index=date，columns=SYN_SKU_1..5）")
+                   f"宽表形状 {wide.shape}（index=date，columns=SYN_SKU_1..4）")
         except Exception:  # noqa: BLE001
             report("pivot_demand_wide(demand_df)", False, traceback.format_exc())
 

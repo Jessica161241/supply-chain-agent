@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""可视化绘图函数（A 同学 + B 同学共同维护）
+"""可视化绘图函数
 
 职责
 ----
-* **A 侧（预测层）**：需求序列总览、真实 vs 各预测器均值、预测 std 不确定性区间；
-* **B 侧（仿真层）**：benchmark 对比仪表盘、牛鞭放大图、节点成本对比。
+* **预测层**：需求序列总览、真实 vs 各预测器均值、预测 std 不确定性区间；
+* **仿真层**：benchmark 对比仪表盘、牛鞭放大图、节点成本对比。
 * 设计为**可复用库函数**：notebook、``run_benchmark``、``agent_wrapper``
   均可直接调用；函数只绘制并返回 Figure，**不调用 plt.show()**
   （展示由调用方决定）；``save_path`` 非 None 时自动创建父目录并落盘。
@@ -13,14 +13,14 @@
 ----
 ::
 
-    # A 侧（预测）
+    # 预测层
     plot_demand_overview(demand_df, data_source="", save_path=None) -> Figure
     plot_forecast_mean(demand_df, col, forecast_map, data_source="", save_path=None) -> Figure
     plot_uncertainty_band(demand_df, col, forecast_mean, forecast_std,
                           std_curves=None, sigmas=(1, 2),
                           data_source="", save_path=None) -> Figure
 
-    # B 侧（仿真对比）
+    # 仿真对比层
     plot_summary_dashboard(benchmark_result, data_source="", save_path=None) -> Figure
     plot_bullwhip_amplification(benchmark_result, data_source="", save_path=None) -> Figure
     plot_node_cost_comparison(benchmark_result, data_source="", save_path=None) -> Figure
@@ -29,15 +29,15 @@
 ----
 * 图内文字一律英文（matplotlib 默认字体无中文字形，避免缺字形告警）；
   中文说明放在调用方的 print / 文档里。
-* A 侧 ``forecast_map`` / ``std_curves`` 为"名称 -> 数组"的有序映射，
+* 预测层 ``forecast_map`` / ``std_curves`` 为"名称 -> 数组"的有序映射，
   遍历顺序即图例顺序；键名 ``"WeightedMA"`` 的曲线以红色高亮。
-* B 侧接受 ``BenchmarkResult``（``run_benchmark.run_comparison`` 的返回值），
+* 仿真对比层接受 ``BenchmarkResult``（``run_benchmark.run_comparison`` 的返回值），
   画 baseline vs 各 alpha 协同策略的对比。
 * 默认落盘目录 ``FIGURES_DIR = <项目根>/outputs/figures/``。
 
 依赖
 ----
-仅 numpy / pandas / matplotlib。B 侧函数额外需要 ``run_benchmark.BenchmarkResult``
+仅 numpy / pandas / matplotlib。仿真对比函数额外需要 ``run_benchmark.BenchmarkResult``
 作为输入（仅类型契约，不 import，保持运行时零耦合）。
 """
 
@@ -52,11 +52,11 @@ import pandas as pd
 
 __all__ = [
     "FIGURES_DIR",
-    # A 侧
+    # 预测层
     "plot_demand_overview",
     "plot_forecast_mean",
     "plot_uncertainty_band",
-    # B 侧
+    # 仿真对比层
     "plot_summary_dashboard",
     "plot_bullwhip_amplification",
     "plot_node_cost_comparison",
@@ -100,7 +100,7 @@ def _ensure_wide(demand_df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# A 侧：预测相关绘图
+# 预测相关绘图
 # ---------------------------------------------------------------------------
 
 def plot_demand_overview(demand_df: pd.DataFrame,
@@ -229,7 +229,7 @@ def plot_uncertainty_band(demand_df: pd.DataFrame,
 
 
 # ---------------------------------------------------------------------------
-# B 侧：仿真对比绘图
+# 仿真对比绘图
 # ---------------------------------------------------------------------------
 
 def plot_summary_dashboard(benchmark_result,
@@ -424,7 +424,7 @@ def _self_test() -> int:
 
         FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-        # ---- A 侧自测 ----
+        # ---- 预测层自测 ----
         paths = [FIGURES_DIR / f"test_dashboard_{n}.png"
                  for n in ("overview", "mean", "band")]
         try:
@@ -442,7 +442,7 @@ def _self_test() -> int:
             assert fig1 is not None and fig2 is not None and fig3 is not None
             for p in paths:
                 assert p.exists() and p.stat().st_size > 0, f"未落盘: {p}"
-            report("A 侧三个绘图函数（overview / mean / band）", True,
+            report("预测层三个绘图函数（overview / mean / band）", True,
                    "均返回 Figure 并按 save_path 落盘：\n  "
                    + "\n  ".join(str(p) for p in paths))
         finally:
@@ -450,7 +450,7 @@ def _self_test() -> int:
                 Path(p).unlink(missing_ok=True)
             plt.close("all")
 
-        # ---- B 侧自测（需要跑一次 benchmark）----
+        # ---- 仿真对比层自测（需要跑一次 benchmark）----
         from src.simulation.run_benchmark import run_comparison
         store_names = ["store_1", "store_2", "store_3", "store_4"]
         dem, fm, fs = {}, {}, {}
@@ -475,7 +475,7 @@ def _self_test() -> int:
             assert fb1 is not None and fb2 is not None and fb3 is not None
             for p in b_paths:
                 assert p.exists() and p.stat().st_size > 0, f"未落盘: {p}"
-            report("B 侧三个绘图函数（summary / bullwhip / cost）", True,
+            report("仿真对比层三个绘图函数（summary / bullwhip / cost）", True,
                    "均返回 Figure 并按 save_path 落盘：\n  "
                    + "\n  ".join(str(p) for p in b_paths))
         finally:

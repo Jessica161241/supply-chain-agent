@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""A同学预测与数据加载模块单元测试（pytest）
-
-负责人: A同学（B 同学的 tests/test_policy.py / test_simulation.py 不在本次范围）
+"""预测与数据加载模块单元测试（pytest）
 
 覆盖范围
 ----
@@ -18,7 +16,7 @@
 * 全部用例离线可跑：数据一律用合成兜底（seed 固定可复现）；M5 真实数据用例
   在 ``data/raw/m5/sales_train_evaluation.csv`` 缺失时 ``pytest.skip``，
   保证 CI 不因网络/数据缺失而失败。
-* 合成数据默认参数对齐 config/network_config.yaml（5 SKU × 365 天、
+* 合成数据默认参数对齐 config/network_config.yaml（4 SKU × 365 天、
   demand.mean=10、demand.std=3），见 data_loader 模块 docstring。
 * 不触碰 ``config/network_config.yaml``；不含 policy / simulation / 拓扑类测试。
 
@@ -84,13 +82,13 @@ TOY_WEIGHTS = [1.0, 2.0, 3.0]  # 归一化后 [1/6, 2/6, 3/6]
 
 @pytest.fixture
 def synthetic_df() -> pd.DataFrame:
-    """长表合成需求（默认 5 SKU × 365 天，config 对齐；seed=42 可复现）。"""
+    """长表合成需求（默认 4 SKU × 365 天，config 对齐；seed=42 可复现）。"""
     return load_synthetic_demand()
 
 
 @pytest.fixture
 def wide_df(synthetic_df) -> pd.DataFrame:
-    """长表转宽表（index=date，columns=SYN_SKU_1..5），供逐序列断言。"""
+    """长表转宽表（index=date，columns=SYN_SKU_1..4），供逐序列断言。"""
     return pivot_demand_wide(synthetic_df)
 
 
@@ -117,10 +115,10 @@ class TestDataLoader:
         """长表契约：四列/行数/日期数/SKU 数/排序/无 NaN/非负。"""
         assert isinstance(synthetic_df, pd.DataFrame)
         assert list(synthetic_df.columns) == LONG_COLUMNS
-        assert synthetic_df.shape == (5 * 365, 4)         # n_nodes × n_days
+        assert synthetic_df.shape == (4 * 365, 4)         # n_nodes × n_days
         assert synthetic_df["date"].nunique() == 365      # config simulation_days
         assert sorted(synthetic_df["item_id"].unique()) == [
-            f"SKU_{i}" for i in range(1, 6)]              # config sku_count=5
+            f"SKU_{i}" for i in range(1, 5)]              # config sku_count=4
         assert synthetic_df["date"].is_monotonic_increasing
         assert not synthetic_df.isna().any().any()
         assert (synthetic_df["demand"] >= 0).all()
@@ -153,8 +151,8 @@ class TestDataLoader:
     def test_pivot_demand_wide(self, synthetic_df):
         """长表 → 宽表：形状/列名/index 名/无 NaN/数值与长表一致。"""
         wide = pivot_demand_wide(synthetic_df)
-        assert wide.shape == (365, 5)
-        assert list(wide.columns) == [f"SYN_SKU_{i}" for i in range(1, 6)]
+        assert wide.shape == (365, 4)
+        assert list(wide.columns) == [f"SYN_SKU_{i}" for i in range(1, 5)]
         assert wide.index.name == "date"
         assert not wide.isna().any().any()
         sku1 = synthetic_df[synthetic_df["item_id"] == "SKU_1"]
@@ -266,7 +264,7 @@ class TestBaselineForecasters:
         """长表输入 -> 每个 (序列, 预测器) 产出 (T,) 的 (fm, fs)，有限且 fs>=0。"""
         forecasts = generate_baseline_forecasts(synthetic_df)
         T = synthetic_df["date"].nunique()
-        assert set(forecasts) == {f"SYN_SKU_{i}" for i in range(1, 6)}
+        assert set(forecasts) == {f"SYN_SKU_{i}" for i in range(1, 5)}
         for col, per_fc in forecasts.items():
             assert set(per_fc) == set(BASELINE_FORECASTERS)
             for name, (fm, fs) in per_fc.items():
@@ -401,7 +399,7 @@ class TestCustomForecaster:
 
 
 # ---------------------------------------------------------------------------
-# 补充覆盖：保存 / Series 输入 / dashboard（A 负责的预测绘图）
+# 补充覆盖：保存 / Series 输入 / dashboard 预测绘图
 # ---------------------------------------------------------------------------
 
 def test_save_baseline_metrics_roundtrip(synthetic_df):
@@ -427,7 +425,7 @@ def test_compute_forecast_metrics_accepts_series():
 
 
 class TestDashboard:
-    """A 负责的预测绘图函数：长表输入自动 pivot、返回 Figure、零 B 模块依赖。"""
+    """预测绘图函数：长表输入自动 pivot、返回 Figure、不依赖仿真模块。"""
 
     def test_dashboard_plots_return_figure_and_save(self, synthetic_df):
         """三个绘图函数（长表输入）返回 Figure 并按 save_path 落盘（测后清理）。"""

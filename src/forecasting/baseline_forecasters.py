@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """基线预测器（Naive / MovingAverage / ExponentialSmoothing）滚动预测误差对比
 
-负责人: A同学（src/forecasting/* 为 A 全权，B 只读）
-
 职责
 ----
 1. 实例化 DeepBullwhip 内置的三种基线预测器，在需求时序上执行滚动预测；

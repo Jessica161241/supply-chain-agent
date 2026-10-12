@@ -308,11 +308,11 @@ def check_network(rep: Report) -> dict:
 
 
 def check_project_topology(rep: Report) -> None:
-    """8. 本项目 3 层拓扑校验（B 同学交付的 config + topology）。"""
+    """8. 本项目 3 层拓扑校验（读 config/network_config.yaml）。"""
     if not CONFIG_PATH.exists():
         rep.add("本项目 3 层拓扑校验", True,
                 f"尚未交付: {CONFIG_PATH.relative_to(PROJECT_ROOT)}"
-                f"（B 同学负责，交付后重跑本脚本即可）",
+                f"（尚未提供，生成后可重跑本脚本校验）",
                 skipped=True)
         return
     try:

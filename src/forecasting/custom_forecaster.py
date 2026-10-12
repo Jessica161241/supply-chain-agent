@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """自定义预测器 WeightedMAForecaster（加权移动平均，含残差标准差）
 
-负责人: A同学（src/forecasting/* 为 A 全权，B 只读）
-
 职责
 ----
 继承 DeepBullwhip 抽象基类 ``Forecaster``，实现加权移动平均预测器
@@ -292,7 +290,7 @@ def run_comparison_with_custom(demand_data: pd.DataFrame | pd.Series | np.ndarra
     TypeError / ValueError
         输入不合法时（沿用 baseline_forecasters 的校验）。
     """
-    # 同包（A 全权模块）内部复用；直接以脚本运行本文件时退化为同目录导入
+    # 同包内部复用；直接以脚本运行本文件时退化为同目录导入
     try:
         from src.forecasting.baseline_forecasters import (
             _coerce_demand_columns, compute_forecast_metrics,

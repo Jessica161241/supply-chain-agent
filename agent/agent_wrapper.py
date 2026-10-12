@@ -1,22 +1,25 @@
 # -*- coding: utf-8 -*-
-"""agent/agent_wrapper.py —— 全流程 Agent 封装（A+B 共同文件）
+"""agent/agent_wrapper.py —— 全流程 Agent 封装
 
-当前状态（2026-10-10）
+职责
 ----
-* **A 侧已完成**：需求准备（M5→合成三级降级，封装 src/data_loader.py）+
-  预测产出（逐节点整段 (T,) 的 (forecast_mean, forecast_std)，封装
-  src/forecasting/custom_forecaster.py，可插拔任意 Forecaster）。
-* **B 侧已完成**：src/network/topology.py（四层 NetworkSupplyChain 构造）+
-  src/coordination/*（协同策略）——仿真执行环节接入完成，
-  支持纯 OrderUpTo 基线与协同策略（OrderUpTo + 下游聚合缺口信号）两种模式。
+把"需求准备 → 预测 → 网络仿真"串成三个可独立调用的函数，外部无需了解内部细节：
 
-A↔B 接口约定（源自 docs/AB_interface_checklist.md §3.1-3.3）
+* :func:`prepare_demand`：需求准备（M5 → 合成三级降级，封装 src/data_loader.py）；
+* :func:`build_forecast_bundle`：预测产出（逐节点整段 (T,) 的
+  ``(forecast_mean, forecast_std)``，封装 src/forecasting/custom_forecaster.py，
+  可插拔任意 ``Forecaster``）；
+* :func:`run_network_simulation`：网络仿真执行，封装 src/network/topology.py
+  与 src/coordination/*，支持纯 OrderUpTo 基线与协同策略
+  （OrderUpTo + 下游聚合缺口信号）两种模式。
+
+模块间交接约定（详见 docs/AB_interface_checklist.md §3.1-3.3）
 ----
-* A → B 需求数据：长表 DataFrame（date/store_id/item_id/demand，团队注意事项 §8
-  口径）+ ``ReplayDemandGenerator``（整表聚合 / 逐节点两种构造）。
-* A → B 预测交接物：``dict[节点名, (fm, fs)]``——fm/fs 均为 shape (T,) 的
-  float64 数组；**fs 允许为 0**（历史不足时的启动瞬态），B 侧不得假设 fs > 0。
-* B → A 结果：``NetworkSimulationResult`` 的 ``node_results`` / ``edge_flows``
+* 需求数据：长表 DataFrame（date/store_id/item_id/demand）
+  + ``ReplayDemandGenerator``（整表聚合 / 逐节点两种构造）。
+* 预测交接物：``dict[节点名, (fm, fs)]``——fm/fs 均为 shape (T,) 的
+  float64 数组；**fs 允许为 0**（历史不足时的启动瞬态），消费侧不得假设 fs > 0。
+* 仿真结果：``NetworkSimulationResult`` 的 ``node_results`` / ``edge_flows``
   / ``cumulative_bullwhip`` / ``total_cost``。
 
 对外接口
@@ -71,12 +74,12 @@ _DEFAULT_ALPHA = 0.8
 
 
 # ---------------------------------------------------------------------------
-# 数据侧封装（A 侧已完成）
+# 数据侧封装
 # ---------------------------------------------------------------------------
 
 @dataclass
 class DemandBundle:
-    """一次仿真所需的数据侧交接物（A 侧产出）。
+    """一次仿真所需的数据侧交接物。
 
     Attributes
     ----------
@@ -126,7 +129,7 @@ def prepare_demand(use_m5: bool = False,
     DemandBundle
         长表 + 整表/逐节点 ReplayDemandGenerator。
     """
-    # A 全权模块：确保项目根在 sys.path（脚本直跑时 CWD 可能不在项目根）
+    # 确保项目根在 sys.path（脚本直跑时 CWD 可能不在项目根）
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
     from src.data_loader import (
@@ -159,13 +162,13 @@ def prepare_demand(use_m5: bool = False,
 
 
 # ---------------------------------------------------------------------------
-# 预测侧封装（A 侧已完成）
+# 预测侧封装
 # ---------------------------------------------------------------------------
 
 def build_forecast_bundle(demand_df: pd.DataFrame,
                           forecaster: Forecaster | None = None,
                           ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
-    """生成 A→B 的预测交接物：逐节点整段 (T,) 的 (forecast_mean, forecast_std)。
+    """生成供仿真使用的预测交接物：逐节点整段 (T,) 的 (forecast_mean, forecast_std)。
 
     Parameters
     ----------
@@ -180,14 +183,14 @@ def build_forecast_bundle(demand_df: pd.DataFrame,
     -------
     dict[str, tuple[np.ndarray, np.ndarray]]
         ``{节点名: (fm, fs)}``——两个 shape (T,) 的 float64 数组；
-        fs 允许为 0（启动瞬态），B 侧不得假设 fs > 0。
+        fs 允许为 0（启动瞬态），消费侧不得假设 fs > 0。
 
     Raises
     ------
     ValueError
         框架返回形状与输入不一致，或输入含非数值列/整列 NaN 时。
     """
-    # A 全权模块：确保项目根在 sys.path（脚本直跑时 CWD 可能不在项目根）
+    # 确保项目根在 sys.path（脚本直跑时 CWD 可能不在项目根）
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
     from src.forecasting.baseline_forecasters import _coerce_demand_columns
@@ -211,7 +214,7 @@ def build_forecast_bundle(demand_df: pd.DataFrame,
 
 
 # ---------------------------------------------------------------------------
-# 仿真执行（B 侧已接入）
+# 仿真执行
 # ---------------------------------------------------------------------------
 
 def run_network_simulation(
@@ -253,7 +256,7 @@ def run_network_simulation(
     FileNotFoundError
         配置文件不存在。
     """
-    # B 全权模块：确保项目根在 sys.path
+    # 确保项目根在 sys.path
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
     from src.data_loader import pivot_demand_wide
@@ -413,7 +416,7 @@ def _self_test() -> int:
         print(f"  自测失败 {len(failures)} 项: {failures}")
         print("=" * 68)
         return 1
-    print("  自测完成：A 侧封装 + B 侧接入全部就绪。")
+    print("  自测完成：封装链路全部就绪。")
     print("=" * 68)
     return 0
 
