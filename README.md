@@ -89,16 +89,15 @@ supply-chain-agent/
 
 | 文档 | 内容 | 读者 |
 |---|---|---|
-| docs/solution.md | **对外方案说明**：创新点、实验设计与结果、局限 —— ⏳ 初稿，暂未提交 | 评委 / 全体 |
+| [docs/solution.md](docs/solution.md) | **对外方案说明**：问题定义、方法、实验设置与结果、局限 | 评委 / 全体 |
 | [docs/setup_guide.md](docs/setup_guide.md) | **环境搭建完整指南**：版本、代理坑、安装、验证、需求数据、源码查阅、FAQ | 全体 |
 | [docs/architecture.md](docs/architecture.md) | **架构文档**：数据流、模块清单、各模块详细设计 | 开发者 |
 | [docs/AB_interface_checklist.md](docs/AB_interface_checklist.md) | **A/B 对齐清单**：7 条实测框架事实 + 参数核对 + 接口契约 | A + B，**动手前必读** |
 | [docs/acceptance_checklist.md](docs/acceptance_checklist.md) | **验收清单**：A~G 七组共 43 项硬指标 + 已知偏差 | 验收人 |
 | [docs/risk_log.md](docs/risk_log.md) | **风险与排查日志**：框架行为排查记录 | 全体 |
 | [docs/incident_log.md](docs/incident_log.md) | **事故记录**：两次影响交付的事故与处理方式 | 维护者 |
-| notebooks/05_final_demo.ipynb | **最终演示**（已执行，输出内嵌）—— ⏳ 初稿，暂未提交 | 评委 / 全体 |
+| [notebooks/05_final_demo.ipynb](notebooks/05_final_demo.ipynb) | **最终演示**（已执行，输出内嵌） | 评委 / 全体 |
 
-> ⏳ 标记的两份为**初稿**，目前只在本地，尚未纳入仓库。
 
 ---
 

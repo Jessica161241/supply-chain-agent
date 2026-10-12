@@ -313,6 +313,6 @@ A：行尾被 checkout 成了 CRLF。仓库根有 `.gitattributes` 强制 `.sh` 
 |---|---|
 | [`AB_interface_checklist.md`](AB_interface_checklist.md) | A/B 对齐清单：7 条实测框架事实 + 参数核对 + 接口契约 —— **动手前必读** |
 | [`architecture.md`](architecture.md) | 架构文档：数据流、模块清单、A 模块详细设计 |
-| `solution.md` | 对外方案说明：创新点、实验设计与结果 —— ⏳ 初稿，暂未提交 |
+| [`solution.md`](solution.md) | 对外方案说明：问题定义、方法、实验设置与结果、局限 |
 | [`acceptance_checklist.md`](acceptance_checklist.md) | 本阶段验收清单（A~G 七组硬指标） |
 | [`risk_log.md`](risk_log.md) | 框架行为排查日志 |
