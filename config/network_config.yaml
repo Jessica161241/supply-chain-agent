@@ -46,7 +46,7 @@ network:
     initial_inventory: 50
     depreciation_rate: 0.0
 
-# SKU 数量（data_loader 的 sku_count=5，但拓扑只有 4 个终端，
+# SKU 数量（data_loader 的 sku_count=4，但拓扑只有 4 个终端，
 # 实际仿真按 4 条 dept 序列映射到 store_1..4）
 sku_count: 4
 
