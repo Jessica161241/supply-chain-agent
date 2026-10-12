@@ -357,7 +357,7 @@ def _self_test() -> int:
 
     # ---------- 步骤 2：build_forecast_bundle（默认 + 可插拔基线） ----------
     try:
-        # 与 05_B_draft / benchmark 保持同一预测口径（window=8 加权），
+        # 与 05_final_demo / benchmark 保持同一预测口径（window=8 加权），
         # 避免同一方案在不同入口下数字不一致
         from src.forecasting.custom_forecaster import WeightedMAForecaster
         benchmark_forecaster = WeightedMAForecaster(
