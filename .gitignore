@@ -31,3 +31,4 @@ Thumbs.db
 .vscode/
 .idea/
 notebooks/*.ipynb.bak
+outputs/video_clips/

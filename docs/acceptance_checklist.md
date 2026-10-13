@@ -44,7 +44,7 @@
 | C4 | 短历史边界不崩 | 空序列 / 1 期序列 | 正常返回，`fs` 按框架约定回退 0.0 | [x] |
 | C5 | 三种官方基线可跑 | `run_baseline_comparison(wide)` | 返回 Naive / MovingAverage / ExponentialSmoothing 三行 | [x] |
 | C6 | 自研预测器入表 | `run_comparison_with_custom(wide)` | 返回 **4 行**（3 基线 + 1 自研），index 名为 `forecaster` | [x] |
-| C7 | 误差表落盘 | `save_baseline_metrics(df)` | `outputs/results/baseline_metrics.csv` 存在且可回读 | [x] |
+| C7 | 误差表落盘 | `save_baseline_metrics(df)` | `outputs/results/baseline_metrics_with_custom.csv` 存在且可回读 | [x] |
 | C8 | 注册表可实例化 | `deepbullwhip.get("forecaster", "weighted_ma")` | 返回 `WeightedMAForecaster` 类 | [x] |
 
 ---
@@ -79,7 +79,7 @@
 
 | # | 验收项 | 验证方式 | 期望 | 状态 |
 |---|---|---|---|---|
-| F1 | 全量测试通过 | `python -m pytest -q` | `79 passed, 1 skipped`，无 failed | [x] |
+| F1 | 全量测试通过 | `python -m pytest -q` | `80 passed, 1 skipped`，无 failed | [x] |
 | F2 | 预测模块测试覆盖 | `pytest tests/test_forecaster.py -q` | 覆盖数据加载 / 基线 / 自研 / 边界 | [x] |
 | F3 | 各模块自测可跑 | `python src/data_loader.py`、`python agent/agent_wrapper.py` 等 | 末尾输出 `全部就绪` / 无 FAIL | [x] |
 | F4 | A 模块有 docstring | 抽查 `src/data_loader.py`、`src/forecasting/*` | 每个公开函数都有 Parameters / Returns | [x] |

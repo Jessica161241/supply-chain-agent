@@ -1,37 +1,31 @@
-# supply-chain-agent 依赖清单（UTF-8）
-# 说明：本文件曾按 B 同学环境生成（pandas==3.0.6 / numpy==2.5.3 / matplotlib==3.11.2 / scipy==1.18.1），
-#       与实际验证环境存在版本漂移；现已对齐为验证环境版本——按本文件重建环境即可复现测试通过状态。
-#       若团队决定升级 pandas 3.x，需先对 A 模块做回归测试后再改此处版本。
-# 可选依赖：kaggle —— 仅 M5 数据自动下载分支使用（src/data_loader.py 的 Kaggle 路径），
-#           需同时设置 KAGGLE_USERNAME / KAGGLE_KEY 环境变量；不安装不影响合成数据兜底路径。
-# kaggle   <- 如需 M5 自动下载，去掉本行行首注释后 pip install -r 即可
-
+# supply-chain-agent environment snapshot (Python 3.13.9)
 asttokens==3.0.2
 colorama==0.4.6
 comm==0.2.3
-contourpy==1.3.2
+contourpy==1.4.0
 cycler==0.12.1
 debugpy==1.8.22
-decorator==5.3.1
 deepbullwhip==0.4.1
-exceptiongroup==1.3.1
 executing==2.2.1
-fonttools==4.65.0
+fonttools==4.66.0
+graphviz==0.21
 iniconfig==2.3.0
-ipykernel==7.3.0
-ipython==8.39.0
+ipykernel==7.4.0
+ipython==9.17.1
+ipython_pygments_lexers==1.1.1
 jedi==0.20.0
 Jinja2==3.1.6
 jupyter_client==8.10.0
 jupyter_core==5.9.1
 kiwisolver==1.5.1
 MarkupSafe==3.0.3
-matplotlib==3.10.9
+matplotlib==3.11.2
 matplotlib-inline==0.2.2
 nest-asyncio2==1.7.3
-numpy==2.2.6
+networkx==3.7
+numpy==2.5.3
 packaging==26.3
-pandas==2.3.3
+pandas==3.0.6
 parso==0.8.7
 pillow==12.3.0
 platformdirs==4.12.2
@@ -43,14 +37,11 @@ Pygments==2.21.0
 pyparsing==3.3.3
 pytest==9.1.1
 python-dateutil==2.9.0.post0
-pytz==2026.4
 PyYAML==6.0.3
 pyzmq==27.2.0
-scipy==1.15.3
+scipy==1.18.1
 six==1.17.0
 stack-data==0.6.3
-tabulate==0.10.0
-tomli==2.4.1
 tornado==6.5.10
 traitlets==5.16.1
 typing_extensions==4.16.0

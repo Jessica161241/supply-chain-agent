@@ -363,7 +363,7 @@ load_m5_demand(store_ids, item_ids) -> pd.DataFrame
     # 长表 [date, store_id, item_id, demand]；item_id 承载 dept 级序列 ID（框架无 item 维度）
 
 load_synthetic_demand(n_nodes=5, n_days=365, seed=42) -> pd.DataFrame
-    # 兜底长表；默认参数对齐 config 基准（sku_count=5 / simulation_days=365 /
+    # 兜底长表；默认参数对齐 config 基准（sku_count=4 / simulation_days=365 /
     # demand.mean=10 / demand.std=3）
 
 build_replay_generator(demand_df) -> ReplayDemandGenerator

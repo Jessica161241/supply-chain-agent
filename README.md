@@ -33,7 +33,7 @@ python scripts/quickstart_verify.py
 
 ```bash
 # 4) 跑测试与自测
-python -m pytest -q                                    # 79 passed, 1 skipped
+python -m pytest -q                                    # 80 passed, 1 skipped
 python agent/agent_wrapper.py                           # 4/4 PASS，A→B 全链路
 ```
 

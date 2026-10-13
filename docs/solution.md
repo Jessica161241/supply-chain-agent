@@ -351,9 +351,9 @@ fill_rate = float(np.mean(inv >= 0))     # 库存非负的期数占比
 
 ### 7.1 运行环境
 
-* Python 3.10 或 3.11（实测环境为 3.10.4）；
-* 依赖版本锁定于 `requirements.txt`：numpy 2.2.6 / pandas 2.3.3 / scipy 1.15.3 /
-  matplotlib 3.10.9 / deepbullwhip 0.4.1 / pyyaml；
+* Python 3.10 或 3.11（实测环境为 3.13.9）；
+* 依赖版本锁定于 `requirements.txt`：numpy 2.5.3 / pandas 3.0.6 / scipy 1.18.1 /
+  matplotlib 3.11.2 / deepbullwhip 0.4.1 / PyYAML 6.0.3；
 * DeepBullwhip 通过 PyPI 安装；其 GitHub 仓库不可访问，框架源码可通过
   `scripts/fetch_source.sh` 拉取至 `vendor/` 备查。
 
@@ -361,7 +361,7 @@ fill_rate = float(np.mean(inv >= 0))     # 库存非负的期数占比
 
 ```bash
 python scripts/quickstart_verify.py            # 环境自检，8 项全部通过
-python -m pytest -q                            # 79 passed, 1 skipped
+python -m pytest -q                            # 80 passed, 1 skipped
 python agent/agent_wrapper.py                  # 全链路自测，4/4 通过
 jupyter nbconvert --to notebook --execute --inplace notebooks/05_final_demo.ipynb
 ```

@@ -13,7 +13,7 @@
 | 操作系统 | Windows / macOS / Linux 均可 | 本机验证环境为 Windows 11 |
 | DeepBullwhip | `0.4.1` | 走 PyPI 安装（其 GitHub 仓库 404，不影响安装） |
 
-验证环境实测：**Python 3.10.4 + deepbullwhip 0.4.1**，`pytest` 79 passed / 1 skipped。
+验证环境实测：**Python 3.13.9 + deepbullwhip 0.4.1**，`pytest` 80 passed / 1 skipped。
 
 ---
 
@@ -155,7 +155,7 @@ python scripts/quickstart_verify.py --quiet
 再跑一遍单元测试：
 
 ```bash
-python -m pytest -q        # 期望 79 passed, 1 skipped
+python -m pytest -q        # 期望 80 passed, 1 skipped
 ```
 
 ---
